@@ -1,5 +1,5 @@
 "use client";
-import AppContent from "@/app/app";
+import AppContent from "./app";
 
 
 export default function Page() {

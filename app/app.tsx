@@ -1,10 +1,10 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { SimpleNavbar } from "@/app/layouting/user-layout";
-import { LandingPage } from "@/app/landing-page/landing-page";
-import { TicketForm } from "@/app/ticket/ticket-form";
-import { DashboardView } from "@/app/dashboard/dashboard";
-import { ChatPage } from "@/app/chat/page/chat-page";
+import { SimpleNavbar } from "./layouting/user-layout";
+import { LandingPage } from "./landing-page/landing-page";
+import { TicketForm } from "./ticket/ticket-form";
+import { DashboardView } from "./dashboard/dashboard";
+import { ChatPage } from "./chat/page/chat-page";
 import { Toaster } from "sonner";
 
 export default function App() {
