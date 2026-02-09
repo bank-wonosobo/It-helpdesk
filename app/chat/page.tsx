@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Send, User, MessageSquare, ArrowLeft, Clock, CheckCircle2, MapPin, Tag, AlertTriangle } from "lucide-react";
+import { 
+  Send, 
+  User, 
+  ArrowLeft, 
+  Clock, 
+  CheckCircle2, 
+  MapPin, 
+  Tag, 
+  AlertTriangle 
+} from "lucide-react";
 
 interface ChatPageProps {
   onBack: () => void;
@@ -14,21 +23,19 @@ interface ChatPageProps {
 }
 
 interface Message {
-  id: number;
+  id: string;
   text: string;
   sender: "user" | "admin";
   timestamp: string;
 }
 
 export const ChatPage = ({ onBack, ticketId, ticketData }: ChatPageProps) => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      text: `Halo ${ticketData.name}! Laporan Anda mengenai "${ticketData.title}" telah kami terima dengan ID ${ticketId}. Ada yang bisa kami bantu lebih lanjut sambil menunggu tim kami memprosesnya?`,
-      sender: "admin",
-      timestamp: "Baru saja",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true)
+
+  const [ticketStatus, setTicketStatus] = useState<
+  "OPEN" | "IN_PROGRESS" | "WAITING" | "CLOSED" | null >(null);
+
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -40,31 +47,63 @@ export const ChatPage = ({ onBack, ticketId, ticketData }: ChatPageProps) => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputText.trim()) return;
+  useEffect(() => {
+  const loadMessages = async () => {
+    setLoading(true);
 
-    const newMessage: Message = {
-      id: Date.now(),
-      text: inputText,
-      sender: "user",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
+    const res = await fetch(`/api/tickets/${ticketId}/messages`);
+    const data = await res.json();
 
-    setMessages([...messages, newMessage]);
-    setInputText("");
+    setMessages(
+      data.map((m: any) => ({
+        id: m.id,
+        text: m.message,
+        sender: m.sender,
+        timestamp: new Date(m.createdAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      }))
+    );
 
-    // Simulate Admin Response
-    setTimeout(() => {
-      const adminResponse: Message = {
-        id: Date.now() + 1,
-        text: "Terima kasih informasinya. Tim IT kami sedang meninjau detail laporan Anda. Mohon tunggu sebentar ya.",
-        sender: "admin",
-        timestamp: "Baru saja",
-      };
-      setMessages((prev) => [...prev, adminResponse]);
-    }, 2000);
+    setLoading(false);
   };
+
+  loadMessages();
+}, [ticketId]);
+
+
+const handleSendMessage = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!inputText.trim()) return;
+
+  const res = await fetch(`/api/tickets/${ticketId}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sender: "user",
+      message: inputText,
+    }),
+  });
+
+  const saved = await res.json();
+
+  setMessages((prev) => [
+    ...prev,
+    {
+      id: saved.id,
+      text: saved.message,
+      sender: saved.sender,
+      timestamp: new Date(saved.createdAt).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    },
+  ]);
+
+  setInputText("");
+};
+
 
   return (
     <div className="max-w-3xl mx-auto h-[calc(100vh-200px)] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -128,7 +167,13 @@ export const ChatPage = ({ onBack, ticketId, ticketData }: ChatPageProps) => {
 
       {/* Area Pesan */}
       <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50 dark:bg-slate-950/50 border-x border-slate-200 dark:border-slate-800 space-y-4 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
-        {messages.map((msg) => (
+        {loading && (
+          <p className="text-center text-xs text-slate-400">
+            Memuat percakapan...
+          </p>
+        )}
+        {loading && 
+        messages.map((msg) => (
           <div 
             key={msg.id} 
             className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-2 duration-300`}

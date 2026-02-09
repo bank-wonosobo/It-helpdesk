@@ -18,10 +18,52 @@ export const TicketForm = ({ onBack, onSuccess }: TicketFormProps) => {
     detail: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    const priorityMap: Record<string, string> = {
+      "Biasa - Tidak mengganggu pekerjaan": "LOW",
+      "Penting - Pekerjaan agak terhambat": "MEDIUM",
+      "Mendesak - Tidak bisa bekerja sama sekali": "HIGH"
+    }
+
+    const categoryMap: Record<string, string> = {
+      "Hardware (Monitor, PC, Printer)": "HARDWARE",
+      "Software (OS, Office, Aplikasi)": "SOFTWARE",
+      "Internet & Jaringan" : "NETWORK",
+      "Email & Akun" : "ACCOUNT",
+      "Lainnya" : "OTHER"
+    }
+
+    const payload = {
+      title: formData.title,
+      description: formData.detail,
+      priority: priorityMap[formData.urgency] || "MEDIUM",
+      category: categoryMap[formData.category] || "HARDWARE",
+    }
     
+    try{
+      const res = await fetch("/api/tickets", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+      })
+
+      if (!res.ok){
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Gagal membuat tiket");
+      }
+
+      const ticket = await res.json();
+      toast.success("Laporan Berhasil Dikirimkan !");
+      onSuccess(ticket.id, formData);
+    }catch (err: any){
+      toast.error("Error : " + err.message)
+    }finally{
+      setIsSubmitting(false)
+    }
+
     setTimeout(() => {
       const generatedId = `TIC-${Math.floor(1000 + Math.random() * 9000)}`;
       setIsSubmitting(false);

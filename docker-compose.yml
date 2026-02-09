@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: eticketing-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: eticketing
+      POSTGRES_USER: eticketing_user
+      POSTGRES_PASSWORD: eticketing_pass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
