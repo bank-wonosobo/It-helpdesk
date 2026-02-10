@@ -70,7 +70,7 @@ export const TicketForm = ({ onBack, onSuccess }: TicketFormProps) => {
       toast.success("Laporan Berhasil Dikirim!", {
         description: `Mohon catat ID Tiket Anda: ${generatedId}`,
       });
-      onSuccess(generatedId, formData); //FormData
+      onSuccess(generatedId, formData);
     }, 1500);
   };
 

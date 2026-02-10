@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 
 function generateTicketCode() {
   const rand = Math.floor(1000 + Math.random() * 9000);

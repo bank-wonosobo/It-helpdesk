@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 
 export async function calculateSla(priority: "LOW" | "MEDIUM" | "HIGH") {
   const sla = await prisma.slaPolicy.findUnique({
