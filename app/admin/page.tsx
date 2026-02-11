@@ -693,7 +693,7 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
 
               {ticketDetail && !loadingDetail && (
                 <div className="flex flex-col min-h-0 h-full space-y-4">
-                  <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-3 border-b border-slate-200 pb-3 dark:border-slate-800">
                     <div className="space-y-1">
                       <div className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-300">
                         <Ticket className="size-3.5" />
@@ -707,7 +707,7 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
                       </p>
                     </div>
 
-                    <div className="w-full rounded-xl border border-slate-200 p-3 dark:border-slate-700 lg:w-80">
+                    <div className="w-full rounded-xl border border-slate-200 p-3 dark:border-slate-700">
                       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                         <span className="rounded-md bg-slate-100 px-2 py-1 dark:bg-slate-800">
                           Prioritas: {ticketDetail.priority}

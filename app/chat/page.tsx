@@ -97,23 +97,26 @@ export const ChatPage = ({ onBack, ticketId, ticketData }: ChatPageProps) => {
         return;
       }
 
-      setMessages(
-        data.map((m: {
-          id: string;
-          message: string;
-          sender: "user" | "admin";
-          createdAt: string;
-        }) => ({
-          id: m.id,
-          text: m.message,
-          sender: m.sender,
-          timestamp: new Date(m.createdAt).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          createdAt: m.createdAt,
-        }))
+      const mapped = data.map((m: {
+        id: string;
+        message: string;
+        sender: "user" | "admin";
+        createdAt: string;
+      }) => ({
+        id: m.id,
+        text: m.message,
+        sender: m.sender,
+        timestamp: new Date(m.createdAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        createdAt: m.createdAt,
+      }));
+
+      const unique = Array.from(
+        new Map(mapped.map((message) => [message.id, message])).values()
       );
+      setMessages(unique);
       if (data.length > 0) {
         const last = data[data.length - 1] as { createdAt: string };
         lastMessageAtRef.current = last.createdAt;
@@ -193,19 +196,22 @@ const handleSendMessage = async (e: React.FormEvent) => {
     return;
   }
 
-  setMessages((prev) => [
-    ...prev,
-    {
-      id: saved.id,
-      text: saved.message,
-      sender: saved.sender,
-      timestamp: new Date(saved.createdAt).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      createdAt: saved.createdAt,
-    },
-  ]);
+  setMessages((prev) => {
+    if (prev.some((msg) => msg.id === saved.id)) return prev;
+    return [
+      ...prev,
+      {
+        id: saved.id,
+        text: saved.message,
+        sender: saved.sender,
+        timestamp: new Date(saved.createdAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        createdAt: saved.createdAt,
+      },
+    ];
+  });
   lastMessageAtRef.current = saved.createdAt;
 
   setInputText("");
