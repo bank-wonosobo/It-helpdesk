@@ -38,7 +38,7 @@ export async function GET(req: Request) {
     }
 
     if (assignedParam === "me") {
-      where.assignedAdminId = session.username;
+      where.assignedAdminId = session.name;
     } else if (assignedParam === "unassigned") {
       where.assignedAdminId = null;
     }
@@ -82,7 +82,7 @@ export async function GET(req: Request) {
         return {
           ...ticket,
           unreadUserMessages,
-          isAssignedToMe: ticket.assignedAdminId === session.username,
+          isAssignedToMe: ticket.assignedAdminId === session.name,
         };
       })
     );

@@ -67,7 +67,7 @@ export async function GET(
     ...ticket,
     reporterName,
     unreadUserMessages,
-    isAssignedToMe: ticket.assignedAdminId === session.username,
+    isAssignedToMe: ticket.assignedAdminId === session.name,
   });
 }
 

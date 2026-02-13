@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import prisma from "@/lib/prisma";
 
 const ADMIN_COOKIE = "hd_admin_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
@@ -7,6 +8,7 @@ type AdminRole = "admin";
 
 export type AdminSession = {
   username: string;
+  name: string;
   role: AdminRole;
   exp: number;
 };
@@ -47,9 +49,10 @@ const getToken = (cookieHeader: string | null) => {
   return cookies[ADMIN_COOKIE] || null;
 };
 
-export const createAdminSessionToken = (username: string) => {
+export const createAdminSessionToken = (username: string, name: string) => {
   const payload: AdminSession = {
     username,
+    name,
     role: "admin",
     exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
   };
@@ -82,6 +85,7 @@ export const verifyAdminSessionToken = (
     if (
       payload.role !== "admin" ||
       typeof payload.username !== "string" ||
+      typeof payload.name !== "string" ||
       typeof payload.exp !== "number"
     ) {
       return null;
@@ -101,8 +105,25 @@ export const getAdminSessionFromRequest = (req: Request) => {
 
 export const getAdminCookieName = () => ADMIN_COOKIE;
 
-export const validateAdminCredentials = (username: string, password: string) => {
-  const expectedPassword = process.env.ADMIN_PASSWORD || "";
-  const expectedUser = process.env.ADMIN_USERNAME || "admin";
-  return password === expectedPassword && username === expectedUser;
+export const validateAdminCredentials = async (
+  username: string,
+  password: string
+): Promise<{ username: string; name: string } | null> => {
+  const admin = await prisma.adminUser.findUnique({
+    where: { username },
+    select: {
+      username: true,
+      password: true,
+      name: true,
+      active: true,
+    },
+  });
+
+  if (!admin || !admin.active) return null;
+  if (admin.password !== password) return null;
+
+  return {
+    username: admin.username,
+    name: admin.name,
+  };
 };

@@ -72,8 +72,14 @@ const ticketData: Prisma.TicketCreateInput[] = [
   },
 ];
 
+const defaultAdmin = {
+  username: process.env.ADMIN_USERNAME || "227",
+  password: process.env.ADMIN_PASSWORD || "rahasia",
+  name: process.env.ADMIN_NAME || "Hanafi",
+};
+
 export async function main() {
-  console.log("🌱 Seeding SLA policies...");
+  console.log("Seeding SLA policies...");
   for (const sla of slaPolicies) {
     await prisma.slaPolicy.upsert({
       where: { priority: sla.priority },
@@ -82,7 +88,7 @@ export async function main() {
     });
   }
 
-  console.log("🌱 Seeding tickets...");
+  console.log("Seeding tickets...");
   for (const ticket of ticketData) {
     await prisma.ticket.upsert({
       where: { code: ticket.code },
@@ -90,17 +96,30 @@ export async function main() {
       create: ticket,
     });
   }
+
+  console.log("Seeding admin user...");
+  await prisma.adminUser.upsert({
+    where: { username: defaultAdmin.username },
+    update: {
+      password: defaultAdmin.password,
+      name: defaultAdmin.name,
+      active: true,
+    },
+    create: {
+      username: defaultAdmin.username,
+      password: defaultAdmin.password,
+      name: defaultAdmin.name,
+      active: true,
+    },
+  });
 }
 
-// ==============================
-// RUNNER
-// ==============================
 main()
   .then(() => {
-    console.log("✅ Seed selesai");
+    console.log("Seed selesai");
   })
   .catch((e) => {
-    console.error("❌ Seed error", e);
+    console.error("Seed error", e);
     process.exit(1);
   })
   .finally(async () => {

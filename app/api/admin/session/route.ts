@@ -14,7 +14,8 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     authenticated: true,
-    user: session.username,
+    user: session.name,
+    username: session.username,
     role: session.role,
   });
 }
@@ -37,7 +38,8 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!validateAdminCredentials(username, password)) {
+  const admin = await validateAdminCredentials(username, password);
+  if (!admin) {
     return NextResponse.json(
       { error: "invalid credentials" },
       { status: 401 }
@@ -46,12 +48,13 @@ export async function POST(req: Request) {
 
   const response = NextResponse.json({
     authenticated: true,
-    user: username,
+    user: admin.name,
+    username: admin.username,
     role: "admin",
   });
   response.cookies.set({
     name: getAdminCookieName(),
-    value: createAdminSessionToken(username),
+    value: createAdminSessionToken(admin.username, admin.name),
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

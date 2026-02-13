@@ -155,6 +155,16 @@ exports.Prisma.SlaPolicyScalarFieldEnum = {
   active: 'active'
 };
 
+exports.Prisma.AdminUserScalarFieldEnum = {
+  id: 'id',
+  username: 'username',
+  password: 'password',
+  name: 'name',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -193,7 +203,8 @@ exports.TicketStatus = exports.$Enums.TicketStatus = {
 exports.Prisma.ModelName = {
   Ticket: 'Ticket',
   TicketMessage: 'TicketMessage',
-  SlaPolicy: 'SlaPolicy'
+  SlaPolicy: 'SlaPolicy',
+  AdminUser: 'AdminUser'
 };
 
 /**

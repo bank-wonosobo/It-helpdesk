@@ -94,7 +94,7 @@ export async function POST(
       data: {
         firstReplyAt: new Date(),
         status: ticket.status === "OPEN" ? "IN_PROGRESS" : ticket.status,
-        assignedAdminId: adminSession?.username || ticket.assignedAdminId,
+        assignedAdminId: adminSession?.name || ticket.assignedAdminId,
         assignedAt: adminSession ? new Date() : ticket.assignedAt,
         lastAdminReadAt: new Date(),
       },
@@ -106,7 +106,7 @@ export async function POST(
       where: { id: ticket.id },
       data: {
         status: ticket.status === "OPEN" ? "IN_PROGRESS" : ticket.status,
-        assignedAdminId: adminSession?.username || ticket.assignedAdminId,
+        assignedAdminId: adminSession?.name || ticket.assignedAdminId,
         assignedAt: adminSession ? new Date() : ticket.assignedAt,
         lastAdminReadAt: new Date(),
       },
