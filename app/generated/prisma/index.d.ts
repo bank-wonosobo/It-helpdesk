@@ -1218,8 +1218,18 @@ export namespace Prisma {
 
   export type AggregateTicket = {
     _count: TicketCountAggregateOutputType | null
+    _avg: TicketAvgAggregateOutputType | null
+    _sum: TicketSumAggregateOutputType | null
     _min: TicketMinAggregateOutputType | null
     _max: TicketMaxAggregateOutputType | null
+  }
+
+  export type TicketAvgAggregateOutputType = {
+    feedbackRating: number | null
+  }
+
+  export type TicketSumAggregateOutputType = {
+    feedbackRating: number | null
   }
 
   export type TicketMinAggregateOutputType = {
@@ -1234,6 +1244,8 @@ export namespace Prisma {
     resolveDueAt: Date | null
     firstReplyAt: Date | null
     closedAt: Date | null
+    feedbackRating: number | null
+    feedbackSubmittedAt: Date | null
     assignedAdminId: string | null
     assignedAt: Date | null
     lastAdminReadAt: Date | null
@@ -1253,6 +1265,8 @@ export namespace Prisma {
     resolveDueAt: Date | null
     firstReplyAt: Date | null
     closedAt: Date | null
+    feedbackRating: number | null
+    feedbackSubmittedAt: Date | null
     assignedAdminId: string | null
     assignedAt: Date | null
     lastAdminReadAt: Date | null
@@ -1272,6 +1286,8 @@ export namespace Prisma {
     resolveDueAt: number
     firstReplyAt: number
     closedAt: number
+    feedbackRating: number
+    feedbackSubmittedAt: number
     assignedAdminId: number
     assignedAt: number
     lastAdminReadAt: number
@@ -1280,6 +1296,14 @@ export namespace Prisma {
     _all: number
   }
 
+
+  export type TicketAvgAggregateInputType = {
+    feedbackRating?: true
+  }
+
+  export type TicketSumAggregateInputType = {
+    feedbackRating?: true
+  }
 
   export type TicketMinAggregateInputType = {
     id?: true
@@ -1293,6 +1317,8 @@ export namespace Prisma {
     resolveDueAt?: true
     firstReplyAt?: true
     closedAt?: true
+    feedbackRating?: true
+    feedbackSubmittedAt?: true
     assignedAdminId?: true
     assignedAt?: true
     lastAdminReadAt?: true
@@ -1312,6 +1338,8 @@ export namespace Prisma {
     resolveDueAt?: true
     firstReplyAt?: true
     closedAt?: true
+    feedbackRating?: true
+    feedbackSubmittedAt?: true
     assignedAdminId?: true
     assignedAt?: true
     lastAdminReadAt?: true
@@ -1331,6 +1359,8 @@ export namespace Prisma {
     resolveDueAt?: true
     firstReplyAt?: true
     closedAt?: true
+    feedbackRating?: true
+    feedbackSubmittedAt?: true
     assignedAdminId?: true
     assignedAt?: true
     lastAdminReadAt?: true
@@ -1377,6 +1407,18 @@ export namespace Prisma {
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
+     * Select which fields to average
+    **/
+    _avg?: TicketAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: TicketSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
      * Select which fields to find the minimum value
     **/
     _min?: TicketMinAggregateInputType
@@ -1407,6 +1449,8 @@ export namespace Prisma {
     take?: number
     skip?: number
     _count?: TicketCountAggregateInputType | true
+    _avg?: TicketAvgAggregateInputType
+    _sum?: TicketSumAggregateInputType
     _min?: TicketMinAggregateInputType
     _max?: TicketMaxAggregateInputType
   }
@@ -1423,12 +1467,16 @@ export namespace Prisma {
     resolveDueAt: Date
     firstReplyAt: Date | null
     closedAt: Date | null
+    feedbackRating: number | null
+    feedbackSubmittedAt: Date | null
     assignedAdminId: string | null
     assignedAt: Date | null
     lastAdminReadAt: Date | null
     createdAt: Date
     updatedAt: Date
     _count: TicketCountAggregateOutputType | null
+    _avg: TicketAvgAggregateOutputType | null
+    _sum: TicketSumAggregateOutputType | null
     _min: TicketMinAggregateOutputType | null
     _max: TicketMaxAggregateOutputType | null
   }
@@ -1459,6 +1507,8 @@ export namespace Prisma {
     resolveDueAt?: boolean
     firstReplyAt?: boolean
     closedAt?: boolean
+    feedbackRating?: boolean
+    feedbackSubmittedAt?: boolean
     assignedAdminId?: boolean
     assignedAt?: boolean
     lastAdminReadAt?: boolean
@@ -1480,6 +1530,8 @@ export namespace Prisma {
     resolveDueAt?: boolean
     firstReplyAt?: boolean
     closedAt?: boolean
+    feedbackRating?: boolean
+    feedbackSubmittedAt?: boolean
     assignedAdminId?: boolean
     assignedAt?: boolean
     lastAdminReadAt?: boolean
@@ -1499,6 +1551,8 @@ export namespace Prisma {
     resolveDueAt?: boolean
     firstReplyAt?: boolean
     closedAt?: boolean
+    feedbackRating?: boolean
+    feedbackSubmittedAt?: boolean
     assignedAdminId?: boolean
     assignedAt?: boolean
     lastAdminReadAt?: boolean
@@ -1518,6 +1572,8 @@ export namespace Prisma {
     resolveDueAt?: boolean
     firstReplyAt?: boolean
     closedAt?: boolean
+    feedbackRating?: boolean
+    feedbackSubmittedAt?: boolean
     assignedAdminId?: boolean
     assignedAt?: boolean
     lastAdminReadAt?: boolean
@@ -1525,7 +1581,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type TicketOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "code" | "title" | "description" | "priority" | "category" | "status" | "responseDueAt" | "resolveDueAt" | "firstReplyAt" | "closedAt" | "assignedAdminId" | "assignedAt" | "lastAdminReadAt" | "createdAt" | "updatedAt", ExtArgs["result"]["ticket"]>
+  export type TicketOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "code" | "title" | "description" | "priority" | "category" | "status" | "responseDueAt" | "resolveDueAt" | "firstReplyAt" | "closedAt" | "feedbackRating" | "feedbackSubmittedAt" | "assignedAdminId" | "assignedAt" | "lastAdminReadAt" | "createdAt" | "updatedAt", ExtArgs["result"]["ticket"]>
   export type TicketInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     messages?: boolean | Ticket$messagesArgs<ExtArgs>
     _count?: boolean | TicketCountOutputTypeDefaultArgs<ExtArgs>
@@ -1550,6 +1606,8 @@ export namespace Prisma {
       resolveDueAt: Date
       firstReplyAt: Date | null
       closedAt: Date | null
+      feedbackRating: number | null
+      feedbackSubmittedAt: Date | null
       assignedAdminId: string | null
       assignedAt: Date | null
       lastAdminReadAt: Date | null
@@ -1990,6 +2048,8 @@ export namespace Prisma {
     readonly resolveDueAt: FieldRef<"Ticket", 'DateTime'>
     readonly firstReplyAt: FieldRef<"Ticket", 'DateTime'>
     readonly closedAt: FieldRef<"Ticket", 'DateTime'>
+    readonly feedbackRating: FieldRef<"Ticket", 'Int'>
+    readonly feedbackSubmittedAt: FieldRef<"Ticket", 'DateTime'>
     readonly assignedAdminId: FieldRef<"Ticket", 'String'>
     readonly assignedAt: FieldRef<"Ticket", 'DateTime'>
     readonly lastAdminReadAt: FieldRef<"Ticket", 'DateTime'>
@@ -4532,6 +4592,7 @@ export namespace Prisma {
     password: string | null
     name: string | null
     active: boolean | null
+    isOnline: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -4542,6 +4603,7 @@ export namespace Prisma {
     password: string | null
     name: string | null
     active: boolean | null
+    isOnline: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -4552,6 +4614,7 @@ export namespace Prisma {
     password: number
     name: number
     active: number
+    isOnline: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -4564,6 +4627,7 @@ export namespace Prisma {
     password?: true
     name?: true
     active?: true
+    isOnline?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -4574,6 +4638,7 @@ export namespace Prisma {
     password?: true
     name?: true
     active?: true
+    isOnline?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -4584,6 +4649,7 @@ export namespace Prisma {
     password?: true
     name?: true
     active?: true
+    isOnline?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -4667,6 +4733,7 @@ export namespace Prisma {
     password: string
     name: string
     active: boolean
+    isOnline: boolean
     createdAt: Date
     updatedAt: Date
     _count: AdminUserCountAggregateOutputType | null
@@ -4694,6 +4761,7 @@ export namespace Prisma {
     password?: boolean
     name?: boolean
     active?: boolean
+    isOnline?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["adminUser"]>
@@ -4704,6 +4772,7 @@ export namespace Prisma {
     password?: boolean
     name?: boolean
     active?: boolean
+    isOnline?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["adminUser"]>
@@ -4714,6 +4783,7 @@ export namespace Prisma {
     password?: boolean
     name?: boolean
     active?: boolean
+    isOnline?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["adminUser"]>
@@ -4724,11 +4794,12 @@ export namespace Prisma {
     password?: boolean
     name?: boolean
     active?: boolean
+    isOnline?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type AdminUserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "username" | "password" | "name" | "active" | "createdAt" | "updatedAt", ExtArgs["result"]["adminUser"]>
+  export type AdminUserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "username" | "password" | "name" | "active" | "isOnline" | "createdAt" | "updatedAt", ExtArgs["result"]["adminUser"]>
 
   export type $AdminUserPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "AdminUser"
@@ -4739,6 +4810,7 @@ export namespace Prisma {
       password: string
       name: string
       active: boolean
+      isOnline: boolean
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["adminUser"]>
@@ -5169,6 +5241,7 @@ export namespace Prisma {
     readonly password: FieldRef<"AdminUser", 'String'>
     readonly name: FieldRef<"AdminUser", 'String'>
     readonly active: FieldRef<"AdminUser", 'Boolean'>
+    readonly isOnline: FieldRef<"AdminUser", 'Boolean'>
     readonly createdAt: FieldRef<"AdminUser", 'DateTime'>
     readonly updatedAt: FieldRef<"AdminUser", 'DateTime'>
   }
@@ -5563,6 +5636,8 @@ export namespace Prisma {
     resolveDueAt: 'resolveDueAt',
     firstReplyAt: 'firstReplyAt',
     closedAt: 'closedAt',
+    feedbackRating: 'feedbackRating',
+    feedbackSubmittedAt: 'feedbackSubmittedAt',
     assignedAdminId: 'assignedAdminId',
     assignedAt: 'assignedAt',
     lastAdminReadAt: 'lastAdminReadAt',
@@ -5601,6 +5676,7 @@ export namespace Prisma {
     password: 'password',
     name: 'name',
     active: 'active',
+    isOnline: 'isOnline',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -5760,6 +5836,8 @@ export namespace Prisma {
     resolveDueAt?: DateTimeFilter<"Ticket"> | Date | string
     firstReplyAt?: DateTimeNullableFilter<"Ticket"> | Date | string | null
     closedAt?: DateTimeNullableFilter<"Ticket"> | Date | string | null
+    feedbackRating?: IntNullableFilter<"Ticket"> | number | null
+    feedbackSubmittedAt?: DateTimeNullableFilter<"Ticket"> | Date | string | null
     assignedAdminId?: StringNullableFilter<"Ticket"> | string | null
     assignedAt?: DateTimeNullableFilter<"Ticket"> | Date | string | null
     lastAdminReadAt?: DateTimeNullableFilter<"Ticket"> | Date | string | null
@@ -5780,6 +5858,8 @@ export namespace Prisma {
     resolveDueAt?: SortOrder
     firstReplyAt?: SortOrderInput | SortOrder
     closedAt?: SortOrderInput | SortOrder
+    feedbackRating?: SortOrderInput | SortOrder
+    feedbackSubmittedAt?: SortOrderInput | SortOrder
     assignedAdminId?: SortOrderInput | SortOrder
     assignedAt?: SortOrderInput | SortOrder
     lastAdminReadAt?: SortOrderInput | SortOrder
@@ -5803,6 +5883,8 @@ export namespace Prisma {
     resolveDueAt?: DateTimeFilter<"Ticket"> | Date | string
     firstReplyAt?: DateTimeNullableFilter<"Ticket"> | Date | string | null
     closedAt?: DateTimeNullableFilter<"Ticket"> | Date | string | null
+    feedbackRating?: IntNullableFilter<"Ticket"> | number | null
+    feedbackSubmittedAt?: DateTimeNullableFilter<"Ticket"> | Date | string | null
     assignedAdminId?: StringNullableFilter<"Ticket"> | string | null
     assignedAt?: DateTimeNullableFilter<"Ticket"> | Date | string | null
     lastAdminReadAt?: DateTimeNullableFilter<"Ticket"> | Date | string | null
@@ -5823,14 +5905,18 @@ export namespace Prisma {
     resolveDueAt?: SortOrder
     firstReplyAt?: SortOrderInput | SortOrder
     closedAt?: SortOrderInput | SortOrder
+    feedbackRating?: SortOrderInput | SortOrder
+    feedbackSubmittedAt?: SortOrderInput | SortOrder
     assignedAdminId?: SortOrderInput | SortOrder
     assignedAt?: SortOrderInput | SortOrder
     lastAdminReadAt?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: TicketCountOrderByAggregateInput
+    _avg?: TicketAvgOrderByAggregateInput
     _max?: TicketMaxOrderByAggregateInput
     _min?: TicketMinOrderByAggregateInput
+    _sum?: TicketSumOrderByAggregateInput
   }
 
   export type TicketScalarWhereWithAggregatesInput = {
@@ -5848,6 +5934,8 @@ export namespace Prisma {
     resolveDueAt?: DateTimeWithAggregatesFilter<"Ticket"> | Date | string
     firstReplyAt?: DateTimeNullableWithAggregatesFilter<"Ticket"> | Date | string | null
     closedAt?: DateTimeNullableWithAggregatesFilter<"Ticket"> | Date | string | null
+    feedbackRating?: IntNullableWithAggregatesFilter<"Ticket"> | number | null
+    feedbackSubmittedAt?: DateTimeNullableWithAggregatesFilter<"Ticket"> | Date | string | null
     assignedAdminId?: StringNullableWithAggregatesFilter<"Ticket"> | string | null
     assignedAt?: DateTimeNullableWithAggregatesFilter<"Ticket"> | Date | string | null
     lastAdminReadAt?: DateTimeNullableWithAggregatesFilter<"Ticket"> | Date | string | null
@@ -5973,6 +6061,7 @@ export namespace Prisma {
     password?: StringFilter<"AdminUser"> | string
     name?: StringFilter<"AdminUser"> | string
     active?: BoolFilter<"AdminUser"> | boolean
+    isOnline?: BoolFilter<"AdminUser"> | boolean
     createdAt?: DateTimeFilter<"AdminUser"> | Date | string
     updatedAt?: DateTimeFilter<"AdminUser"> | Date | string
   }
@@ -5983,6 +6072,7 @@ export namespace Prisma {
     password?: SortOrder
     name?: SortOrder
     active?: SortOrder
+    isOnline?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -5996,6 +6086,7 @@ export namespace Prisma {
     password?: StringFilter<"AdminUser"> | string
     name?: StringFilter<"AdminUser"> | string
     active?: BoolFilter<"AdminUser"> | boolean
+    isOnline?: BoolFilter<"AdminUser"> | boolean
     createdAt?: DateTimeFilter<"AdminUser"> | Date | string
     updatedAt?: DateTimeFilter<"AdminUser"> | Date | string
   }, "id" | "username">
@@ -6006,6 +6097,7 @@ export namespace Prisma {
     password?: SortOrder
     name?: SortOrder
     active?: SortOrder
+    isOnline?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: AdminUserCountOrderByAggregateInput
@@ -6022,6 +6114,7 @@ export namespace Prisma {
     password?: StringWithAggregatesFilter<"AdminUser"> | string
     name?: StringWithAggregatesFilter<"AdminUser"> | string
     active?: BoolWithAggregatesFilter<"AdminUser"> | boolean
+    isOnline?: BoolWithAggregatesFilter<"AdminUser"> | boolean
     createdAt?: DateTimeWithAggregatesFilter<"AdminUser"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"AdminUser"> | Date | string
   }
@@ -6038,6 +6131,8 @@ export namespace Prisma {
     resolveDueAt: Date | string
     firstReplyAt?: Date | string | null
     closedAt?: Date | string | null
+    feedbackRating?: number | null
+    feedbackSubmittedAt?: Date | string | null
     assignedAdminId?: string | null
     assignedAt?: Date | string | null
     lastAdminReadAt?: Date | string | null
@@ -6058,6 +6153,8 @@ export namespace Prisma {
     resolveDueAt: Date | string
     firstReplyAt?: Date | string | null
     closedAt?: Date | string | null
+    feedbackRating?: number | null
+    feedbackSubmittedAt?: Date | string | null
     assignedAdminId?: string | null
     assignedAt?: Date | string | null
     lastAdminReadAt?: Date | string | null
@@ -6078,6 +6175,8 @@ export namespace Prisma {
     resolveDueAt?: DateTimeFieldUpdateOperationsInput | Date | string
     firstReplyAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     closedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    feedbackRating?: NullableIntFieldUpdateOperationsInput | number | null
+    feedbackSubmittedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedAdminId?: NullableStringFieldUpdateOperationsInput | string | null
     assignedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastAdminReadAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -6098,6 +6197,8 @@ export namespace Prisma {
     resolveDueAt?: DateTimeFieldUpdateOperationsInput | Date | string
     firstReplyAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     closedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    feedbackRating?: NullableIntFieldUpdateOperationsInput | number | null
+    feedbackSubmittedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedAdminId?: NullableStringFieldUpdateOperationsInput | string | null
     assignedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastAdminReadAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -6118,6 +6219,8 @@ export namespace Prisma {
     resolveDueAt: Date | string
     firstReplyAt?: Date | string | null
     closedAt?: Date | string | null
+    feedbackRating?: number | null
+    feedbackSubmittedAt?: Date | string | null
     assignedAdminId?: string | null
     assignedAt?: Date | string | null
     lastAdminReadAt?: Date | string | null
@@ -6137,6 +6240,8 @@ export namespace Prisma {
     resolveDueAt?: DateTimeFieldUpdateOperationsInput | Date | string
     firstReplyAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     closedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    feedbackRating?: NullableIntFieldUpdateOperationsInput | number | null
+    feedbackSubmittedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedAdminId?: NullableStringFieldUpdateOperationsInput | string | null
     assignedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastAdminReadAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -6156,6 +6261,8 @@ export namespace Prisma {
     resolveDueAt?: DateTimeFieldUpdateOperationsInput | Date | string
     firstReplyAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     closedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    feedbackRating?: NullableIntFieldUpdateOperationsInput | number | null
+    feedbackSubmittedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedAdminId?: NullableStringFieldUpdateOperationsInput | string | null
     assignedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastAdminReadAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -6280,6 +6387,7 @@ export namespace Prisma {
     password: string
     name: string
     active?: boolean
+    isOnline?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -6290,6 +6398,7 @@ export namespace Prisma {
     password: string
     name: string
     active?: boolean
+    isOnline?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -6300,6 +6409,7 @@ export namespace Prisma {
     password?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    isOnline?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -6310,6 +6420,7 @@ export namespace Prisma {
     password?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    isOnline?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -6320,6 +6431,7 @@ export namespace Prisma {
     password: string
     name: string
     active?: boolean
+    isOnline?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -6330,6 +6442,7 @@ export namespace Prisma {
     password?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    isOnline?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -6340,6 +6453,7 @@ export namespace Prisma {
     password?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     active?: BoolFieldUpdateOperationsInput | boolean
+    isOnline?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -6402,6 +6516,17 @@ export namespace Prisma {
     not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
   }
 
+  export type IntNullableFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableFilter<$PrismaModel> | number | null
+  }
+
   export type StringNullableFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
@@ -6444,11 +6569,17 @@ export namespace Prisma {
     resolveDueAt?: SortOrder
     firstReplyAt?: SortOrder
     closedAt?: SortOrder
+    feedbackRating?: SortOrder
+    feedbackSubmittedAt?: SortOrder
     assignedAdminId?: SortOrder
     assignedAt?: SortOrder
     lastAdminReadAt?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+  }
+
+  export type TicketAvgOrderByAggregateInput = {
+    feedbackRating?: SortOrder
   }
 
   export type TicketMaxOrderByAggregateInput = {
@@ -6463,6 +6594,8 @@ export namespace Prisma {
     resolveDueAt?: SortOrder
     firstReplyAt?: SortOrder
     closedAt?: SortOrder
+    feedbackRating?: SortOrder
+    feedbackSubmittedAt?: SortOrder
     assignedAdminId?: SortOrder
     assignedAt?: SortOrder
     lastAdminReadAt?: SortOrder
@@ -6482,11 +6615,17 @@ export namespace Prisma {
     resolveDueAt?: SortOrder
     firstReplyAt?: SortOrder
     closedAt?: SortOrder
+    feedbackRating?: SortOrder
+    feedbackSubmittedAt?: SortOrder
     assignedAdminId?: SortOrder
     assignedAt?: SortOrder
     lastAdminReadAt?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+  }
+
+  export type TicketSumOrderByAggregateInput = {
+    feedbackRating?: SortOrder
   }
 
   export type StringWithAggregatesFilter<$PrismaModel = never> = {
@@ -6563,6 +6702,22 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedDateTimeNullableFilter<$PrismaModel>
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
+  }
+
+  export type IntNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedIntNullableFilter<$PrismaModel>
+    _max?: NestedIntNullableFilter<$PrismaModel>
   }
 
   export type StringNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -6692,6 +6847,7 @@ export namespace Prisma {
     password?: SortOrder
     name?: SortOrder
     active?: SortOrder
+    isOnline?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -6702,6 +6858,7 @@ export namespace Prisma {
     password?: SortOrder
     name?: SortOrder
     active?: SortOrder
+    isOnline?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -6712,6 +6869,7 @@ export namespace Prisma {
     password?: SortOrder
     name?: SortOrder
     active?: SortOrder
+    isOnline?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -6752,6 +6910,14 @@ export namespace Prisma {
 
   export type NullableDateTimeFieldUpdateOperationsInput = {
     set?: Date | string | null
+  }
+
+  export type NullableIntFieldUpdateOperationsInput = {
+    set?: number | null
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
   }
 
   export type NullableStringFieldUpdateOperationsInput = {
@@ -6869,6 +7035,17 @@ export namespace Prisma {
     not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
   }
 
+  export type NestedIntNullableFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableFilter<$PrismaModel> | number | null
+  }
+
   export type NestedStringNullableFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
@@ -6969,7 +7146,7 @@ export namespace Prisma {
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
 
-  export type NestedIntNullableFilter<$PrismaModel = never> = {
+  export type NestedIntNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: number | IntFieldRefInput<$PrismaModel> | null
     in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
     notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
@@ -6977,7 +7154,23 @@ export namespace Prisma {
     lte?: number | IntFieldRefInput<$PrismaModel>
     gt?: number | IntFieldRefInput<$PrismaModel>
     gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntNullableFilter<$PrismaModel> | number | null
+    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedIntNullableFilter<$PrismaModel>
+    _max?: NestedIntNullableFilter<$PrismaModel>
+  }
+
+  export type NestedFloatNullableFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatNullableFilter<$PrismaModel> | number | null
   }
 
   export type NestedStringNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -7100,6 +7293,8 @@ export namespace Prisma {
     resolveDueAt: Date | string
     firstReplyAt?: Date | string | null
     closedAt?: Date | string | null
+    feedbackRating?: number | null
+    feedbackSubmittedAt?: Date | string | null
     assignedAdminId?: string | null
     assignedAt?: Date | string | null
     lastAdminReadAt?: Date | string | null
@@ -7119,6 +7314,8 @@ export namespace Prisma {
     resolveDueAt: Date | string
     firstReplyAt?: Date | string | null
     closedAt?: Date | string | null
+    feedbackRating?: number | null
+    feedbackSubmittedAt?: Date | string | null
     assignedAdminId?: string | null
     assignedAt?: Date | string | null
     lastAdminReadAt?: Date | string | null
@@ -7154,6 +7351,8 @@ export namespace Prisma {
     resolveDueAt?: DateTimeFieldUpdateOperationsInput | Date | string
     firstReplyAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     closedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    feedbackRating?: NullableIntFieldUpdateOperationsInput | number | null
+    feedbackSubmittedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedAdminId?: NullableStringFieldUpdateOperationsInput | string | null
     assignedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastAdminReadAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -7173,6 +7372,8 @@ export namespace Prisma {
     resolveDueAt?: DateTimeFieldUpdateOperationsInput | Date | string
     firstReplyAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     closedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    feedbackRating?: NullableIntFieldUpdateOperationsInput | number | null
+    feedbackSubmittedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     assignedAdminId?: NullableStringFieldUpdateOperationsInput | string | null
     assignedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     lastAdminReadAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminSessionFromRequest } from "@/lib/admin-auth";
 import prisma from "@/lib/prisma";
+import { deriveTicketSlaState } from "@/lib/sla";
 
 export async function GET(
   req: Request,
@@ -68,6 +69,12 @@ export async function GET(
     reporterName,
     unreadUserMessages,
     isAssignedToMe: ticket.assignedAdminId === session.name,
+    ...deriveTicketSlaState({
+      status: ticket.status,
+      firstReplyAt: ticket.firstReplyAt,
+      responseDueAt: ticket.responseDueAt,
+      resolveDueAt: ticket.resolveDueAt,
+    }),
   });
 }
 

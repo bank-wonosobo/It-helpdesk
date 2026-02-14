@@ -9,6 +9,7 @@ type TicketStatus = "OPEN" | "IN_PROGRESS" | "WAITING" | "CLOSED";
 type TicketCategory = "HARDWARE" | "SOFTWARE" | "NETWORK" | "ACCOUNT" | "OTHER";
 type TicketPriority = "LOW" | "MEDIUM" | "HIGH";
 type TicketSender = "user" | "admin";
+type SlaState = "BREACHED" | "DUE_SOON" | "ON_TRACK";
 
 type AdminTicketSummary = {
   id: string;
@@ -24,6 +25,13 @@ type AdminTicketSummary = {
   assignedAt: string | null;
   unreadUserMessages: number;
   isAssignedToMe: boolean;
+  isResponseBreached: boolean;
+  isResolveBreached: boolean;
+  isSlaBreached: boolean;
+  isResponseDueSoon: boolean;
+  isResolveDueSoon: boolean;
+  isSlaDueSoon: boolean;
+  slaState: SlaState;
 };
 
 type TicketMessage = {
@@ -56,7 +64,7 @@ type AdminSessionResponse = {
 
 type AdminNotificationEvent = {
   id: string;
-  type: "ticket_created" | "user_message";
+  type: "ticket_created" | "user_message" | "sla_breach";
   ticketId: string;
   ticketCode: string;
   title: string;
@@ -85,6 +93,21 @@ const priorityBadgeClass: Record<TicketPriority, string> = {
   LOW: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200",
   MEDIUM: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200",
   HIGH: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200",
+};
+
+const slaBadgeClass: Record<SlaState, string> = {
+  BREACHED:
+    "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-200 dark:border-red-500/40",
+  DUE_SOON:
+    "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-500/20 dark:text-amber-200 dark:border-amber-500/40",
+  ON_TRACK:
+    "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-200 dark:border-emerald-500/40",
+};
+
+const slaLabel: Record<SlaState, string> = {
+  BREACHED: "BREACH",
+  DUE_SOON: "DUE SOON",
+  ON_TRACK: "ON TRACK",
 };
 
 const formatRelative = (dateIso: string) =>
@@ -140,6 +163,7 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
   const [totalPages, setTotalPages] = useState(1);
   const [status, setStatus] = useState<"ALL" | TicketStatus>("ALL");
   const [assignedFilter, setAssignedFilter] = useState<"all" | "me" | "unassigned">("all");
+  const [urgencyFilter, setUrgencyFilter] = useState<"all" | "breached" | "due_soon" | "on_track">("all");
   const [query, setQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
 
@@ -156,6 +180,17 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
   const lastDetailMessageAtRef = useRef<string>(new Date(0).toISOString());
   const notifiedEventIdsRef = useRef<Set<string>>(new Set());
   const lastAdminNotifAtRef = useRef<string>(new Date().toISOString());
+  const slaSummary = useMemo(() => {
+    return tickets.reduce(
+      (acc, ticket) => {
+        if (ticket.slaState === "BREACHED") acc.breached += 1;
+        else if (ticket.slaState === "DUE_SOON") acc.dueSoon += 1;
+        else acc.onTrack += 1;
+        return acc;
+      },
+      { breached: 0, dueSoon: 0, onTrack: 0 }
+    );
+  }, [tickets]);
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -163,17 +198,19 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
     params.set("limit", "10");
     if (status !== "ALL") params.set("status", status);
     if (assignedFilter !== "all") params.set("assigned", assignedFilter);
+    if (urgencyFilter !== "all") params.set("urgency", urgencyFilter);
     if (query) params.set("q", query);
     return params.toString();
-  }, [page, status, assignedFilter, query]);
+  }, [page, status, assignedFilter, urgencyFilter, query]);
 
   const exportQueryString = useMemo(() => {
     const params = new URLSearchParams();
     if (status !== "ALL") params.set("status", status);
     if (assignedFilter !== "all") params.set("assigned", assignedFilter);
+    if (urgencyFilter !== "all") params.set("urgency", urgencyFilter);
     if (query) params.set("q", query);
     return params.toString();
-  }, [status, assignedFilter, query]);
+  }, [status, assignedFilter, urgencyFilter, query]);
 
   const checkSession = useCallback(async () => {
     try {
@@ -352,6 +389,13 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
           void loadTickets();
         }
 
+        if (payload.type === "sla_breach") {
+          toast("SLA Breach", {
+            description: `${payload.ticketCode} - ${payload.message}`,
+          });
+          void loadTickets();
+        }
+
         if (payload.type === "user_message") {
           toast("Pesan User Baru", {
             description: `${payload.ticketCode}: ${payload.message.slice(0, 80)}`,
@@ -382,6 +426,8 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
           const title =
             payload.type === "ticket_created"
               ? `Tiket Baru ${payload.ticketCode}`
+              : payload.type === "sla_breach"
+              ? `SLA Breach ${payload.ticketCode}`
               : `Pesan Baru ${payload.ticketCode}`;
           const body =
             payload.type === "ticket_created"
@@ -601,34 +647,53 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
 
   if (!authenticated) {
     return (
-      <div className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-        <div className="mb-4 flex items-center gap-2 text-slate-800 dark:text-white">
-          <Shield className="size-5 text-blue-500" />
-          <h2 className="text-lg font-bold">Admin Login</h2>
+      <div className="mx-auto max-w-md rounded-3xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-6 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:to-slate-950">
+        <div className="mb-5 flex items-start gap-3">
+          <div className="rounded-xl bg-blue-100 p-2.5 dark:bg-blue-500/20">
+            <Shield className="size-5 text-blue-600 dark:text-blue-300" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Admin Login</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Masuk untuk mengelola tiket, SLA, dan balasan user.
+            </p>
+          </div>
         </div>
         <div className="space-y-3">
-          <input
-            type="text"
-            value={loginUsername}
-            onChange={(e) => setLoginUsername(e.target.value)}
-            placeholder="Username admin"
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          />
-          <input
-            type="password"
-            value={loginPassword}
-            onChange={(e) => setLoginPassword(e.target.value)}
-            placeholder="Password admin"
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          />
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              Username
+            </p>
+            <input
+              type="text"
+              value={loginUsername}
+              onChange={(e) => setLoginUsername(e.target.value)}
+              placeholder="Masukkan username admin"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              Password
+            </p>
+            <input
+              type="password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              placeholder="Masukkan password"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            />
+          </div>
           {authError && (
-            <p className="text-xs text-red-600 dark:text-red-400">{authError}</p>
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+              {authError}
+            </p>
           )}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pt-1">
             <button
               type="button"
               onClick={onBackHome}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-300"
+              className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Kembali
             </button>
@@ -697,11 +762,26 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[390px_minmax(0,1fr)] xl:h-[calc(100vh-170px)]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[460px_minmax(0,1fr)] xl:h-[calc(100vh-170px)]">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 flex flex-col min-h-0">
           <div className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200">
             <Shield className="size-4 text-blue-500" />
             Queue Tiket
+          </div>
+
+          <div className="mb-3 grid grid-cols-3 gap-2">
+            <div className="rounded-lg border border-red-200 bg-red-50 px-2 py-2 text-center dark:border-red-500/30 dark:bg-red-500/10">
+              <p className="text-[10px] font-bold text-red-700 dark:text-red-300">BREACHED</p>
+              <p className="text-base font-extrabold text-red-700 dark:text-red-200">{slaSummary.breached}</p>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-center dark:border-amber-500/30 dark:bg-amber-500/10">
+              <p className="text-[10px] font-bold text-amber-800 dark:text-amber-300">DUE SOON</p>
+              <p className="text-base font-extrabold text-amber-700 dark:text-amber-200">{slaSummary.dueSoon}</p>
+            </div>
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-2 text-center dark:border-emerald-500/30 dark:bg-emerald-500/10">
+              <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">ON TRACK</p>
+              <p className="text-base font-extrabold text-emerald-700 dark:text-emerald-200">{slaSummary.onTrack}</p>
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -712,7 +792,7 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
               placeholder="Cari kode/judul tiket..."
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             />
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <select
                 value={status}
                 onChange={(e) => {
@@ -738,6 +818,21 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
                 <option value="all">Semua Assignment</option>
                 <option value="me">Assigned ke saya</option>
                 <option value="unassigned">Belum assigned</option>
+              </select>
+              <select
+                value={urgencyFilter}
+                onChange={(e) => {
+                  setPage(1);
+                  setUrgencyFilter(
+                    e.target.value as "all" | "breached" | "due_soon" | "on_track"
+                  );
+                }}
+                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              >
+                <option value="all">Semua SLA</option>
+                <option value="breached">SLA Breach</option>
+                <option value="due_soon">Due Soon</option>
+                <option value="on_track">On Track</option>
               </select>
             </div>
             <button
@@ -773,6 +868,10 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
                   className={`w-full rounded-xl border p-3 text-left transition ${
                     selectedTicketId === ticket.id
                       ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-500/10"
+                      : ticket.isSlaBreached
+                      ? "border-red-300 bg-red-50/70 dark:border-red-500/50 dark:bg-red-500/10"
+                      : ticket.isSlaDueSoon
+                      ? "border-amber-300 bg-amber-50/70 dark:border-amber-500/50 dark:bg-amber-500/10"
                       : "border-slate-200 bg-slate-50 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
                   }`}
                 >
@@ -792,6 +891,13 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
                       className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${priorityBadgeClass[ticket.priority]}`}
                     >
                       {ticket.priority}
+                    </span>
+                  </div>
+                  <div className="mt-1">
+                    <span
+                      className={`inline-flex rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${slaBadgeClass[ticket.slaState]}`}
+                    >
+                      {slaLabel[ticket.slaState]}
                     </span>
                   </div>
                   <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
@@ -886,6 +992,11 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
                         </span>
                         <span className="rounded-md bg-slate-100 px-2 py-1 dark:bg-slate-800">
                           Resolve SLA: {formatRelative(ticketDetail.resolveDueAt)}
+                        </span>
+                        <span
+                          className={`rounded-md border px-2 py-1 font-bold ${slaBadgeClass[ticketDetail.slaState]}`}
+                        >
+                          SLA: {slaLabel[ticketDetail.slaState]}
                         </span>
                       </div>
                       <div className="mt-3 flex items-center gap-2">

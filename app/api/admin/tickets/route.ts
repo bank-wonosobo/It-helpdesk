@@ -2,6 +2,7 @@ import { Prisma } from "@/app/generated/prisma/client";
 import { NextResponse } from "next/server";
 import { getAdminSessionFromRequest } from "@/lib/admin-auth";
 import prisma from "@/lib/prisma";
+import { deriveTicketSlaState } from "@/lib/sla";
 
 export async function GET(req: Request) {
   const session = getAdminSessionFromRequest(req);
@@ -16,6 +17,7 @@ export async function GET(req: Request) {
     const statusParam = searchParams.get("status");
     const queryParam = (searchParams.get("q") || "").trim();
     const assignedParam = searchParams.get("assigned");
+    const urgencyParam = searchParams.get("urgency");
 
     const page = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
     const limit =
@@ -43,29 +45,29 @@ export async function GET(req: Request) {
       where.assignedAdminId = null;
     }
 
-    const [total, tickets] = await Promise.all([
-      prisma.ticket.count({ where }),
-      prisma.ticket.findMany({
-        where,
-        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-        skip: (page - 1) * limit,
-        take: limit,
-        select: {
-          id: true,
-          code: true,
-          title: true,
-          description: true,
-          status: true,
-          category: true,
-          priority: true,
-          createdAt: true,
-          updatedAt: true,
-          assignedAdminId: true,
-          assignedAt: true,
-          lastAdminReadAt: true,
-        },
-      }),
-    ]);
+    const tickets = await prisma.ticket.findMany({
+      where,
+      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        code: true,
+        title: true,
+        description: true,
+        status: true,
+        category: true,
+        priority: true,
+        createdAt: true,
+        updatedAt: true,
+        firstReplyAt: true,
+        responseDueAt: true,
+        resolveDueAt: true,
+        assignedAdminId: true,
+        assignedAt: true,
+        lastAdminReadAt: true,
+      },
+    });
+
+    const now = new Date();
 
     const items = await Promise.all(
       tickets.map(async (ticket) => {
@@ -83,12 +85,48 @@ export async function GET(req: Request) {
           ...ticket,
           unreadUserMessages,
           isAssignedToMe: ticket.assignedAdminId === session.name,
+          ...deriveTicketSlaState(
+            {
+              status: ticket.status,
+              firstReplyAt: ticket.firstReplyAt,
+              responseDueAt: ticket.responseDueAt,
+              resolveDueAt: ticket.resolveDueAt,
+            },
+            now
+          ),
         };
       })
     );
 
+    const urgencyFiltered = items.filter((item) => {
+      if (urgencyParam === "breached") return item.isSlaBreached;
+      if (urgencyParam === "due_soon") return item.isSlaDueSoon;
+      if (urgencyParam === "on_track") return !item.isSlaBreached && !item.isSlaDueSoon;
+      return true;
+    });
+
+    const priorityRank: Record<"HIGH" | "MEDIUM" | "LOW", number> = {
+      HIGH: 0,
+      MEDIUM: 1,
+      LOW: 2,
+    };
+
+    const sorted = urgencyFiltered.sort((a, b) => {
+      const urgencyA = a.isSlaBreached ? 0 : a.isSlaDueSoon ? 1 : 2;
+      const urgencyB = b.isSlaBreached ? 0 : b.isSlaDueSoon ? 1 : 2;
+      if (urgencyA !== urgencyB) return urgencyA - urgencyB;
+
+      const priorityDelta = priorityRank[a.priority] - priorityRank[b.priority];
+      if (priorityDelta !== 0) return priorityDelta;
+
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+
+    const total = sorted.length;
+    const pagedItems = sorted.slice((page - 1) * limit, page * limit);
+
     return NextResponse.json({
-      items,
+      items: pagedItems,
       page,
       limit,
       total,

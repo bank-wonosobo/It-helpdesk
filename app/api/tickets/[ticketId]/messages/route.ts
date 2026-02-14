@@ -80,6 +80,13 @@ export async function POST(
     );
   }
 
+  if (sender === "user" && ticket.status === "CLOSED") {
+    return NextResponse.json(
+      { error: "Tiket sudah selesai. Anda tidak bisa mengirim pesan lagi." },
+      { status: 409 }
+    );
+  }
+
   const newMessage = await prisma.ticketMessage.create({
     data: {
       ticketId: ticket.id,
@@ -109,16 +116,6 @@ export async function POST(
         assignedAdminId: adminSession?.name || ticket.assignedAdminId,
         assignedAt: adminSession ? new Date() : ticket.assignedAt,
         lastAdminReadAt: new Date(),
-      },
-    });
-  }
-
-  if (sender === "user" && ticket.status === "CLOSED") {
-    await prisma.ticket.update({
-      where: { id: ticket.id },
-      data: {
-        status: "IN_PROGRESS",
-        closedAt: null,
       },
     });
   }

@@ -24,11 +24,13 @@ export default function Page() {
 
         const ticket = (await res.json()) as {
           status?: "OPEN" | "IN_PROGRESS" | "WAITING" | "CLOSED";
+          feedbackRating?: number | null;
         };
         const active =
           ticket.status === "OPEN" ||
           ticket.status === "IN_PROGRESS" ||
-          ticket.status === "WAITING";
+          ticket.status === "WAITING" ||
+          (ticket.status === "CLOSED" && ticket.feedbackRating == null);
 
         if (mounted) setHasActiveChat(active);
       } catch {

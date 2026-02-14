@@ -43,13 +43,15 @@ model Ticket {
   category    TicketCategory @default(HARDWARE)
   status      TicketStatus   @default(OPEN)
 
-  responseDueAt   DateTime
-  resolveDueAt    DateTime
-  firstReplyAt    DateTime?
-  closedAt        DateTime?
-  assignedAdminId String?
-  assignedAt      DateTime?
-  lastAdminReadAt DateTime?
+  responseDueAt       DateTime
+  resolveDueAt        DateTime
+  firstReplyAt        DateTime?
+  closedAt            DateTime?
+  feedbackRating      Int?
+  feedbackSubmittedAt DateTime?
+  assignedAdminId     String?
+  assignedAt          DateTime?
+  lastAdminReadAt     DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -82,6 +84,7 @@ model AdminUser {
   password  String
   name      String
   active    Boolean  @default(true)
+  isOnline  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

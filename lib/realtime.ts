@@ -9,7 +9,7 @@ type RealtimeMessage = {
 type Subscriber = (message: RealtimeMessage) => void;
 export type AdminRealtimeEvent = {
   id: string;
-  type: "ticket_created" | "user_message";
+  type: "ticket_created" | "user_message" | "sla_breach";
   ticketId: string;
   ticketCode: string;
   title: string;
@@ -18,9 +18,22 @@ export type AdminRealtimeEvent = {
 };
 type AdminSubscriber = (event: AdminRealtimeEvent) => void;
 
+export type AdminPresenceEvent = {
+  id: string;
+  adminId: string;
+  username: string;
+  name: string;
+  active: boolean;
+  isOnline: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+type AdminPresenceSubscriber = (event: AdminPresenceEvent) => void;
+
 const globalRealtime = global as unknown as {
   ticketSubscribers?: Map<string, Set<Subscriber>>;
   adminSubscribers?: Set<AdminSubscriber>;
+  adminPresenceSubscribers?: Set<AdminPresenceSubscriber>;
 };
 
 const subscribers = globalRealtime.ticketSubscribers || new Map<string, Set<Subscriber>>();
@@ -30,6 +43,11 @@ if (!globalRealtime.ticketSubscribers) {
 const adminSubscribers = globalRealtime.adminSubscribers || new Set<AdminSubscriber>();
 if (!globalRealtime.adminSubscribers) {
   globalRealtime.adminSubscribers = adminSubscribers;
+}
+const adminPresenceSubscribers =
+  globalRealtime.adminPresenceSubscribers || new Set<AdminPresenceSubscriber>();
+if (!globalRealtime.adminPresenceSubscribers) {
+  globalRealtime.adminPresenceSubscribers = adminPresenceSubscribers;
 }
 
 export const publishTicketMessage = (ticketId: string, message: RealtimeMessage) => {
@@ -65,5 +83,20 @@ export const subscribeAdminEvents = (subscriber: AdminSubscriber) => {
   adminSubscribers.add(subscriber);
   return () => {
     adminSubscribers.delete(subscriber);
+  };
+};
+
+export const publishAdminPresenceEvent = (event: AdminPresenceEvent) => {
+  for (const notify of adminPresenceSubscribers) {
+    notify(event);
+  }
+};
+
+export const subscribeAdminPresenceEvents = (
+  subscriber: AdminPresenceSubscriber
+) => {
+  adminPresenceSubscribers.add(subscriber);
+  return () => {
+    adminPresenceSubscribers.delete(subscriber);
   };
 };

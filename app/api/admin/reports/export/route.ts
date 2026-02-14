@@ -47,51 +47,50 @@ export async function GET(req: Request) {
     const tickets = await prisma.ticket.findMany({
       where,
       orderBy: [{ createdAt: "desc" }],
-      include: {
-        messages: {
-          orderBy: { createdAt: "asc" },
-          select: {
-            id: true,
-            sender: true,
-            createdAt: true,
-          },
-        },
+      select: {
+        code: true,
+        title: true,
+        description: true,
+        status: true,
+        priority: true,
+        category: true,
+        assignedAdminId: true,
+        createdAt: true,
+        responseDueAt: true,
+        resolveDueAt: true,
+        firstReplyAt: true,
+        closedAt: true,
       },
     });
 
     const headers = [
-      "Ticket ID",
       "Code",
       "Title",
       "Description",
       "Status",
       "Priority",
       "Category",
-      "Assigned Admin",
+      "Assigned",
       "Created At",
-      "Updated At",
       "Response Due At",
       "Resolve Due At",
-      "First Reply At",
-      "Closed At",
-      "Total Messages",
-      "User Messages",
-      "Admin Messages",
       "Response SLA Met",
       "Resolve SLA Met",
     ];
 
     const rows = tickets.map((ticket) => {
-      const totalMessages = ticket.messages.length;
-      const userMessages = ticket.messages.filter((msg) => msg.sender === "user").length;
-      const adminMessages = ticket.messages.filter((msg) => msg.sender === "admin").length;
-      const responseSlaMet =
-        ticket.firstReplyAt && ticket.firstReplyAt <= ticket.responseDueAt ? "YES" : "NO";
-      const resolveSlaMet =
-        ticket.closedAt && ticket.closedAt <= ticket.resolveDueAt ? "YES" : "NO";
+      const responseSlaMet = ticket.firstReplyAt
+        ? ticket.firstReplyAt <= ticket.responseDueAt
+          ? "YES"
+          : "NO"
+        : "PENDING";
+      const resolveSlaMet = ticket.closedAt
+        ? ticket.closedAt <= ticket.resolveDueAt
+          ? "YES"
+          : "NO"
+        : "PENDING";
 
       return [
-        ticket.id,
         ticket.code,
         ticket.title,
         ticket.description,
@@ -100,14 +99,8 @@ export async function GET(req: Request) {
         ticket.category,
         ticket.assignedAdminId || "",
         ticket.createdAt.toISOString(),
-        ticket.updatedAt.toISOString(),
         ticket.responseDueAt.toISOString(),
         ticket.resolveDueAt.toISOString(),
-        ticket.firstReplyAt ? ticket.firstReplyAt.toISOString() : "",
-        ticket.closedAt ? ticket.closedAt.toISOString() : "",
-        totalMessages,
-        userMessages,
-        adminMessages,
         responseSlaMet,
         resolveSlaMet,
       ]

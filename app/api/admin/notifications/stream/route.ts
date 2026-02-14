@@ -1,6 +1,7 @@
 import { getAdminSessionFromRequest } from "@/lib/admin-auth";
 import prisma from "@/lib/prisma";
 import { AdminRealtimeEvent, subscribeAdminEvents } from "@/lib/realtime";
+import { deriveTicketSlaState } from "@/lib/sla";
 
 export const runtime = "nodejs";
 
@@ -43,6 +44,59 @@ export async function GET(req: Request) {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       controller.enqueue(toSseMessage("connected", { ok: true }));
+
+      const emitSlaBreachEvents = async () => {
+        const tickets = await prisma.ticket.findMany({
+          where: {
+            status: { not: "CLOSED" },
+          },
+          select: {
+            id: true,
+            code: true,
+            title: true,
+            status: true,
+            firstReplyAt: true,
+            responseDueAt: true,
+            resolveDueAt: true,
+          },
+          take: 300,
+        });
+
+        for (const ticket of tickets) {
+          const sla = deriveTicketSlaState({
+            status: ticket.status,
+            firstReplyAt: ticket.firstReplyAt,
+            responseDueAt: ticket.responseDueAt,
+            resolveDueAt: ticket.resolveDueAt,
+          });
+
+          if (!sla.isSlaBreached) continue;
+
+          if (sla.isResponseBreached) {
+            emitEvent(controller, {
+              id: `sla_breach:response:${ticket.id}`,
+              type: "sla_breach",
+              ticketId: ticket.id,
+              ticketCode: ticket.code,
+              title: ticket.title,
+              message: "SLA respons terlewati.",
+              createdAt: new Date().toISOString(),
+            });
+          }
+
+          if (sla.isResolveBreached) {
+            emitEvent(controller, {
+              id: `sla_breach:resolve:${ticket.id}`,
+              type: "sla_breach",
+              ticketId: ticket.id,
+              ticketCode: ticket.code,
+              title: ticket.title,
+              message: "SLA penyelesaian terlewati.",
+              createdAt: new Date().toISOString(),
+            });
+          }
+        }
+      };
 
       const [recentTickets, recentMessages] = await Promise.all([
         prisma.ticket.findMany({
@@ -96,6 +150,8 @@ export async function GET(req: Request) {
           createdAt: message.createdAt.toISOString(),
         });
       }
+
+      await emitSlaBreachEvents();
 
       heartbeat = setInterval(() => {
         controller.enqueue(encoder.encode(": ping\n\n"));
@@ -159,6 +215,8 @@ export async function GET(req: Request) {
               createdAt: message.createdAt.toISOString(),
             });
           }
+
+          await emitSlaBreachEvents();
         } catch {
           // Ignore transient polling errors.
         }

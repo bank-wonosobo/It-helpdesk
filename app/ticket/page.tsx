@@ -49,13 +49,17 @@ export default function TicketPage() {
           return;
         }
 
-        const ticket = (await res.json()) as { status?: TicketStatus };
-        const isActive =
+        const ticket = (await res.json()) as {
+          status?: TicketStatus;
+          feedbackRating?: number | null;
+        };
+        const isBlocked =
           ticket.status === "OPEN" ||
           ticket.status === "IN_PROGRESS" ||
-          ticket.status === "WAITING";
+          ticket.status === "WAITING" ||
+          (ticket.status === "CLOSED" && ticket.feedbackRating == null);
 
-        if (mounted) setGateState(isActive ? "blocked" : "open");
+        if (mounted) setGateState(isBlocked ? "blocked" : "open");
       } catch {
         if (mounted) setGateState("open");
       }
@@ -79,10 +83,10 @@ export default function TicketPage() {
     return (
       <div className="mx-auto max-w-2xl rounded-2xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-500/30 dark:bg-amber-500/10">
         <h2 className="text-base font-bold text-amber-800 dark:text-amber-200">
-          Anda masih punya tiket yang belum selesai
+          Anda masih punya tiket yang perlu ditindaklanjuti
         </h2>
         <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
-          Selesaikan atau tunggu tiket aktif ditutup admin dulu sebelum membuat tiket baru.
+          Selesaikan tiket aktif terlebih dulu, atau kirim feedback untuk tiket yang baru ditutup, sebelum membuat tiket baru.
         </p>
         <div className="mt-4 flex gap-2">
           <button

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAdminSessionFromRequest } from "@/lib/admin-auth";
+import { hashPassword } from "@/lib/password";
 import prisma from "@/lib/prisma";
+import { publishAdminPresenceEvent } from "@/lib/realtime";
 
 export async function GET(req: Request) {
   const session = getAdminSessionFromRequest(req);
@@ -10,13 +12,15 @@ export async function GET(req: Request) {
 
   try {
     const users = await prisma.adminUser.findMany({
-      orderBy: [{ active: "desc" }, { createdAt: "asc" }],
+      orderBy: [{ isOnline: "desc" }, { active: "desc" }, { createdAt: "asc" }],
       select: {
         id: true,
         username: true,
         name: true,
         active: true,
+        isOnline: true,
         createdAt: true,
+        updatedAt: true,
       },
     });
 
@@ -92,17 +96,31 @@ export async function POST(req: Request) {
     const created = await prisma.adminUser.create({
       data: {
         username: normalizedUsername,
-        password: normalizedPassword,
+        password: await hashPassword(normalizedPassword),
         name: normalizedName,
         active: true,
+        isOnline: false,
       },
       select: {
         id: true,
         username: true,
         name: true,
         active: true,
+        isOnline: true,
         createdAt: true,
+        updatedAt: true,
       },
+    });
+
+    publishAdminPresenceEvent({
+      id: `presence:${created.id}:${created.updatedAt.toISOString()}`,
+      adminId: created.id,
+      username: created.username,
+      name: created.name,
+      active: created.active,
+      isOnline: created.isOnline,
+      createdAt: created.createdAt.toISOString(),
+      updatedAt: created.updatedAt.toISOString(),
     });
 
     return NextResponse.json(created, { status: 201 });

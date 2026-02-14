@@ -5,6 +5,9 @@ import {
   getAdminSessionFromRequest,
   validateAdminCredentials,
 } from "@/lib/admin-auth";
+import { hashPassword } from "@/lib/password";
+import prisma from "@/lib/prisma";
+import { publishAdminPresenceEvent } from "@/lib/realtime";
 
 export async function GET(req: Request) {
   const session = getAdminSessionFromRequest(req);
@@ -46,6 +49,35 @@ export async function POST(req: Request) {
     );
   }
 
+  const updated = await prisma.adminUser.update({
+    where: { username: admin.username },
+    data: {
+      isOnline: true,
+      ...(admin.needsPasswordRehash
+        ? { password: await hashPassword(password) }
+        : {}),
+    },
+    select: {
+      id: true,
+      username: true,
+      name: true,
+      active: true,
+      isOnline: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+  publishAdminPresenceEvent({
+    id: `presence:${updated.id}:${updated.updatedAt.toISOString()}`,
+    adminId: updated.id,
+    username: updated.username,
+    name: updated.name,
+    active: updated.active,
+    isOnline: updated.isOnline,
+    createdAt: updated.createdAt.toISOString(),
+    updatedAt: updated.updatedAt.toISOString(),
+  });
+
   const response = NextResponse.json({
     authenticated: true,
     user: admin.name,
@@ -64,8 +96,38 @@ export async function POST(req: Request) {
   return response;
 }
 
-export async function DELETE() {
+export async function DELETE(req: Request) {
+  const session = getAdminSessionFromRequest(req);
   const response = NextResponse.json({ ok: true });
+  if (session) {
+    try {
+      const updated = await prisma.adminUser.update({
+        where: { username: session.username },
+        data: { isOnline: false },
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          active: true,
+          isOnline: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+      publishAdminPresenceEvent({
+        id: `presence:${updated.id}:${updated.updatedAt.toISOString()}`,
+        adminId: updated.id,
+        username: updated.username,
+        name: updated.name,
+        active: updated.active,
+        isOnline: updated.isOnline,
+        createdAt: updated.createdAt.toISOString(),
+        updatedAt: updated.updatedAt.toISOString(),
+      });
+    } catch {
+      // Keep logout idempotent even if user record no longer exists.
+    }
+  }
   response.cookies.set({
     name: getAdminCookieName(),
     value: "",

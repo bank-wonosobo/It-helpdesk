@@ -47,6 +47,8 @@ model Ticket {
   resolveDueAt  DateTime
   firstReplyAt  DateTime?
   closedAt      DateTime?
+  feedbackRating Int?
+  feedbackSubmittedAt DateTime?
   assignedAdminId String?
   assignedAt      DateTime?
   lastAdminReadAt DateTime?
@@ -82,6 +84,7 @@ model AdminUser {
   password  String
   name      String
   active    Boolean  @default(true)
+  isOnline  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

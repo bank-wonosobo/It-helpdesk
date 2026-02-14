@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import prisma from "@/lib/prisma";
+import { isPasswordHashed, verifyPassword } from "@/lib/password";
 
 const ADMIN_COOKIE = "hd_admin_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
@@ -108,10 +109,13 @@ export const getAdminCookieName = () => ADMIN_COOKIE;
 export const validateAdminCredentials = async (
   username: string,
   password: string
-): Promise<{ username: string; name: string } | null> => {
+): Promise<
+  { id: string; username: string; name: string; needsPasswordRehash: boolean } | null
+> => {
   const admin = await prisma.adminUser.findUnique({
     where: { username },
     select: {
+      id: true,
       username: true,
       password: true,
       name: true,
@@ -120,10 +124,13 @@ export const validateAdminCredentials = async (
   });
 
   if (!admin || !admin.active) return null;
-  if (admin.password !== password) return null;
+  const valid = await verifyPassword(password, admin.password);
+  if (!valid) return null;
 
   return {
+    id: admin.id,
     username: admin.username,
     name: admin.name,
+    needsPasswordRehash: !isPasswordHashed(admin.password),
   };
 };

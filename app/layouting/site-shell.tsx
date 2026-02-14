@@ -39,11 +39,15 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const ticket = (await res.json()) as { status?: TicketStatus };
+        const ticket = (await res.json()) as {
+          status?: TicketStatus;
+          feedbackRating?: number | null;
+        };
         setHasActiveChat(
           ticket.status === "OPEN" ||
             ticket.status === "IN_PROGRESS" ||
-            ticket.status === "WAITING"
+            ticket.status === "WAITING" ||
+            (ticket.status === "CLOSED" && ticket.feedbackRating == null)
         );
       } catch {
         setHasActiveChat(false);

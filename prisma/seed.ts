@@ -1,6 +1,7 @@
 import { PrismaClient, Prisma } from "../app/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import "dotenv/config";
+import { hashPassword } from "../lib/password";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -98,18 +99,21 @@ export async function main() {
   }
 
   console.log("Seeding admin user...");
+  const hashedDefaultPassword = await hashPassword(defaultAdmin.password);
   await prisma.adminUser.upsert({
     where: { username: defaultAdmin.username },
     update: {
-      password: defaultAdmin.password,
+      password: hashedDefaultPassword,
       name: defaultAdmin.name,
       active: true,
+      isOnline: false,
     },
     create: {
       username: defaultAdmin.username,
-      password: defaultAdmin.password,
+      password: hashedDefaultPassword,
       name: defaultAdmin.name,
       active: true,
+      isOnline: false,
     },
   });
 }

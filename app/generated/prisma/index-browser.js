@@ -132,6 +132,8 @@ exports.Prisma.TicketScalarFieldEnum = {
   resolveDueAt: 'resolveDueAt',
   firstReplyAt: 'firstReplyAt',
   closedAt: 'closedAt',
+  feedbackRating: 'feedbackRating',
+  feedbackSubmittedAt: 'feedbackSubmittedAt',
   assignedAdminId: 'assignedAdminId',
   assignedAt: 'assignedAt',
   lastAdminReadAt: 'lastAdminReadAt',
@@ -161,6 +163,7 @@ exports.Prisma.AdminUserScalarFieldEnum = {
   password: 'password',
   name: 'name',
   active: 'active',
+  isOnline: 'isOnline',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
