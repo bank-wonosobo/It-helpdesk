@@ -96,6 +96,7 @@ export const ChatPage = ({ onBack, ticketId, ticketData }: ChatPageProps) => {
   const [draftRating, setDraftRating] = useState<number>(0);
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [closingTicket, setClosingTicket] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -363,10 +364,6 @@ const handleSendMessage = async (e: React.FormEvent) => {
 
 const closeTicketByUser = async () => {
   if (ticketStatus === "CLOSED") return;
-  const confirmed = window.confirm(
-    "Yakin ingin menyelesaikan tiket ini sekarang?"
-  );
-  if (!confirmed) return;
 
   setClosingTicket(true);
   try {
@@ -394,6 +391,7 @@ const closeTicketByUser = async () => {
     alert("Koneksi terputus saat menutup tiket.");
   } finally {
     setClosingTicket(false);
+    setShowCloseConfirm(false);
   }
 };
 
@@ -452,7 +450,7 @@ const submitFeedback = async () => {
             {ticketStatus !== "CLOSED" && (
               <button
                 type="button"
-                onClick={closeTicketByUser}
+                onClick={() => setShowCloseConfirm(true)}
                 disabled={closingTicket}
                 className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
               >
@@ -599,6 +597,37 @@ const submitFeedback = async () => {
           Tim IT akan menerima notifikasi pesan Anda secara langsung.
         </p>
       </div>
+
+      {showCloseConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Selesaikan Tiket?
+            </h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+              Setelah tiket diselesaikan, chat akan dikunci dan Anda diminta memberi feedback layanan.
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCloseConfirm(false)}
+                disabled={closingTicket}
+                className="rounded-lg border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={closeTicketByUser}
+                disabled={closingTicket}
+                className="rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {closingTicket ? "Menyelesaikan..." : "Ya, Selesaikan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

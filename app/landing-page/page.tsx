@@ -30,18 +30,18 @@ export const LandingPage = ({
 
       {hasActiveChat && (
         <div className="max-w-4xl mx-auto">
-          <div className="rounded-2xl border border-blue-200 bg-blue-50 px-6 py-4 transition dark:border-blue-500/30 dark:bg-blue-500/10">
-            <p className="text-sm font-bold text-blue-700 dark:text-blue-300">
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 px-6 py-5 shadow-sm transition dark:border-blue-500/30 dark:bg-blue-500/10">
+            <p className="text-base font-bold text-blue-700 dark:text-blue-300">
               Anda masih punya chat tiket aktif
             </p>
-            <p className="text-xs text-blue-600/90 dark:text-blue-200/90 mt-1">
+            <p className="mt-1.5 text-sm text-blue-600/90 dark:text-blue-200/90">
               Anda perlu menyelesaikan tiket ini dulu sebelum membuat tiket baru.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={onResumeChat}
-                className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
               >
                 Lanjutkan Chat
               </button>
