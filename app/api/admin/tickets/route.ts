@@ -17,6 +17,7 @@ export async function GET(req: Request) {
     const statusParam = searchParams.get("status");
     const queryParam = (searchParams.get("q") || "").trim();
     const assignedParam = searchParams.get("assigned");
+    const categoryParam = searchParams.get("category");
     const urgencyParam = searchParams.get("urgency");
 
     const page = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
@@ -43,6 +44,22 @@ export async function GET(req: Request) {
       where.assignedAdminId = session.name;
     } else if (assignedParam === "unassigned") {
       where.assignedAdminId = null;
+    }
+
+    const allowedCategory = new Set([
+      "HARDWARE",
+      "SOFTWARE",
+      "NETWORK",
+      "ACCOUNT",
+      "OTHER",
+    ]);
+    if (categoryParam && allowedCategory.has(categoryParam)) {
+      where.category = categoryParam as
+        | "HARDWARE"
+        | "SOFTWARE"
+        | "NETWORK"
+        | "ACCOUNT"
+        | "OTHER";
     }
 
     const tickets = await prisma.ticket.findMany({
@@ -112,14 +129,18 @@ export async function GET(req: Request) {
     };
 
     const sorted = urgencyFiltered.sort((a, b) => {
-      const urgencyA = a.isSlaBreached ? 0 : a.isSlaDueSoon ? 1 : 2;
-      const urgencyB = b.isSlaBreached ? 0 : b.isSlaDueSoon ? 1 : 2;
-      if (urgencyA !== urgencyB) return urgencyA - urgencyB;
+      const isNewA = a.status === "OPEN" ? 0 : 1;
+      const isNewB = b.status === "OPEN" ? 0 : 1;
+      if (isNewA !== isNewB) return isNewA - isNewB;
+
+      if (a.status === "CLOSED" && b.status === "CLOSED") {
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      }
 
       const priorityDelta = priorityRank[a.priority] - priorityRank[b.priority];
       if (priorityDelta !== 0) return priorityDelta;
 
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
     const total = sorted.length;

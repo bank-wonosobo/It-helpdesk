@@ -46,7 +46,7 @@ type ChatTicketData = {
 type StreamMessage = {
   id: string;
   ticketId: string;
-  sender: "user" | "admin" | "system";
+  sender: "user" | "admin";
   message: string;
   createdAt: string;
 };
@@ -58,7 +58,7 @@ type PersistedChatState = {
 const LAST_CHAT_STORAGE_KEY = "hd_last_chat_state";
 const WELCOME_PREFIX = "welcome:";
 const WELCOME_TEXT =
-  "Halo,Tim kami akan segera meninjau masalah Anda. Selagi menunggu, adakah hal lain yang perlu kami tahu ?";
+  "Hai! Laporan kamu sudah masuk ke tim kami, nih. Lagi kita cek dulu, ya! Oh iya, kalau ada detail lain yang ketinggalan, langsung kirim di sini aja ya.";
 
 const parseJsonSafe = async <T,>(res: Response): Promise<T | null> => {
   const raw = await res.text();
@@ -84,9 +84,6 @@ const getStatusLabel = (status: TicketStatus | null) => {
       return "Tidak diketahui";
   }
 };
-
-const isChatSender = (sender: StreamMessage["sender"]): sender is "user" | "admin" =>
-  sender === "user" || sender === "admin";
 
 export const ChatPage = ({ onBack, ticketId, ticketData }: ChatPageProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -228,7 +225,6 @@ export const ChatPage = ({ onBack, ticketId, ticketData }: ChatPageProps) => {
     source.addEventListener("message", (event) => {
       try {
         const payload = JSON.parse((event as MessageEvent).data) as StreamMessage;
-        if (!isChatSender(payload.sender)) return;
         setMessages((prev) => {
           if (prev.some((msg) => msg.id === payload.id)) return prev;
           lastMessageAtRef.current = payload.createdAt;

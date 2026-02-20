@@ -218,8 +218,8 @@ export const DashboardView = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
           <h3 className="font-semibold text-slate-800 dark:text-white mb-6">Volume Tiket Mingguan</h3>
-          <div className="h-64 w-full relative min-h-[256px]">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          <div className="h-64 w-full min-h-[256px] min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={256}>
               <BarChart data={stats.weeklyVolume}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.1} />
                 <XAxis 
@@ -251,26 +251,28 @@ export const DashboardView = () => {
 
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
           <h3 className="font-semibold text-slate-800 dark:text-white mb-6">Status Penyelesaian</h3>
-          <div className="h-64 w-full flex items-center relative min-h-[256px]">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-              <PieChart>
-                <Pie
-                  data={stats.statusBreakdown}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {stats.statusBreakdown.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="space-y-3 pr-8">
+          <div className="h-64 w-full min-h-[256px] flex items-center gap-4">
+            <div className="h-full min-w-0 flex-1">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={256}>
+                <PieChart>
+                  <Pie
+                    data={stats.statusBreakdown}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {stats.statusBreakdown.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="w-36 shrink-0 space-y-3 pr-2">
               {stats.statusBreakdown.map((item, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>

@@ -48,6 +48,7 @@ export default function Page() {
     <LandingPage
       onCreateClick={() => router.push("/ticket")}
       onDashboardClick={() => router.push("/dashboard")}
+      onGuideClick={() => router.push("/panduan")}
       onResumeChat={() => router.push("/chat")}
       hasActiveChat={hasActiveChat}
     />

@@ -189,7 +189,7 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [status, setStatus] = useState<"ALL" | TicketStatus>("ALL");
-  const [assignedFilter, setAssignedFilter] = useState<"all" | "me" | "unassigned">("all");
+  const [categoryFilter, setCategoryFilter] = useState<"all" | TicketCategory>("all");
   const [urgencyFilter, setUrgencyFilter] = useState<"all" | "breached" | "due_soon" | "on_track">("all");
   const [query, setQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -226,20 +226,20 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
     params.set("page", String(page));
     params.set("limit", "10");
     if (status !== "ALL") params.set("status", status);
-    if (assignedFilter !== "all") params.set("assigned", assignedFilter);
+    if (categoryFilter !== "all") params.set("category", categoryFilter);
     if (urgencyFilter !== "all") params.set("urgency", urgencyFilter);
     if (query) params.set("q", query);
     return params.toString();
-  }, [page, status, assignedFilter, urgencyFilter, query]);
+  }, [page, status, categoryFilter, urgencyFilter, query]);
 
   const exportQueryString = useMemo(() => {
     const params = new URLSearchParams();
     if (status !== "ALL") params.set("status", status);
-    if (assignedFilter !== "all") params.set("assigned", assignedFilter);
+    if (categoryFilter !== "all") params.set("category", categoryFilter);
     if (urgencyFilter !== "all") params.set("urgency", urgencyFilter);
     if (query) params.set("q", query);
     return params.toString();
-  }, [status, assignedFilter, urgencyFilter, query]);
+  }, [status, categoryFilter, urgencyFilter, query]);
 
   const checkSession = useCallback(async () => {
     try {
@@ -903,19 +903,22 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
                       <option value="CLOSED">Selesai</option>
                     </select>
                   </FieldGroup>
-                  <FieldGroup label="Assignment" htmlFor="queue-assigned">
+                  <FieldGroup label="Kategori" htmlFor="queue-category">
                     <select
-                      id="queue-assigned"
-                      value={assignedFilter}
+                      id="queue-category"
+                      value={categoryFilter}
                       onChange={(e) => {
                         setPage(1);
-                        setAssignedFilter(e.target.value as "all" | "me" | "unassigned");
+                        setCategoryFilter(e.target.value as "all" | TicketCategory);
                       }}
                       className="ds-focus-strong w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                     >
-                      <option value="all">Semua Assignment</option>
-                      <option value="me">Assigned ke saya</option>
-                      <option value="unassigned">Belum assigned</option>
+                      <option value="all">Semua Kategori</option>
+                      <option value="HARDWARE">Hardware</option>
+                      <option value="SOFTWARE">Software</option>
+                      <option value="NETWORK">Network</option>
+                      <option value="ACCOUNT">Account</option>
+                      <option value="OTHER">Other</option>
                     </select>
                   </FieldGroup>
                   <FieldGroup label="Urgensi SLA" htmlFor="queue-urgency">
@@ -942,6 +945,7 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
                   onClick={() => {
                     setPage(1);
                     setQuery(searchInput.trim());
+                    setShowQueueFilters(false);
                   }}
                   className="w-full rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                 >

@@ -23,6 +23,7 @@ export async function GET(req: Request) {
     const statusParam = searchParams.get("status");
     const queryParam = (searchParams.get("q") || "").trim();
     const assignedParam = searchParams.get("assigned");
+    const categoryParam = searchParams.get("category");
 
     const where: Prisma.TicketWhereInput = {};
     const allowedStatus = new Set(["OPEN", "IN_PROGRESS", "WAITING", "CLOSED"]);
@@ -42,6 +43,22 @@ export async function GET(req: Request) {
       where.assignedAdminId = session.name;
     } else if (assignedParam === "unassigned") {
       where.assignedAdminId = null;
+    }
+
+    const allowedCategory = new Set([
+      "HARDWARE",
+      "SOFTWARE",
+      "NETWORK",
+      "ACCOUNT",
+      "OTHER",
+    ]);
+    if (categoryParam && allowedCategory.has(categoryParam)) {
+      where.category = categoryParam as
+        | "HARDWARE"
+        | "SOFTWARE"
+        | "NETWORK"
+        | "ACCOUNT"
+        | "OTHER";
     }
 
     const tickets = await prisma.ticket.findMany({
