@@ -2,13 +2,25 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, RefreshCw, Send, Shield, Ticket, UserCheck } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Download,
+  RefreshCw,
+  Send,
+  Shield,
+  SlidersHorizontal,
+  Ticket,
+  UserCheck,
+} from "lucide-react";
 import { toast } from "sonner";
+import { EmptyState, FieldGroup, NoticeCard } from "@/app/components/system/ux";
 
 type TicketStatus = "OPEN" | "IN_PROGRESS" | "WAITING" | "CLOSED";
 type TicketCategory = "HARDWARE" | "SOFTWARE" | "NETWORK" | "ACCOUNT" | "OTHER";
 type TicketPriority = "LOW" | "MEDIUM" | "HIGH";
 type TicketSender = "user" | "admin";
+type SlaState = "BREACHED" | "DUE_SOON" | "ON_TRACK";
 
 type AdminTicketSummary = {
   id: string;
@@ -24,6 +36,13 @@ type AdminTicketSummary = {
   assignedAt: string | null;
   unreadUserMessages: number;
   isAssignedToMe: boolean;
+  isResponseBreached: boolean;
+  isResolveBreached: boolean;
+  isSlaBreached: boolean;
+  isResponseDueSoon: boolean;
+  isResolveDueSoon: boolean;
+  isSlaDueSoon: boolean;
+  slaState: SlaState;
 };
 
 type TicketMessage = {
@@ -56,7 +75,7 @@ type AdminSessionResponse = {
 
 type AdminNotificationEvent = {
   id: string;
-  type: "ticket_created" | "user_message";
+  type: "ticket_created" | "user_message" | "sla_breach";
   ticketId: string;
   ticketCode: string;
   title: string;
@@ -85,6 +104,21 @@ const priorityBadgeClass: Record<TicketPriority, string> = {
   LOW: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200",
   MEDIUM: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200",
   HIGH: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200",
+};
+
+const slaBadgeClass: Record<SlaState, string> = {
+  BREACHED:
+    "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-200 dark:border-red-500/40",
+  DUE_SOON:
+    "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-500/20 dark:text-amber-200 dark:border-amber-500/40",
+  ON_TRACK:
+    "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-200 dark:border-emerald-500/40",
+};
+
+const slaLabel: Record<SlaState, string> = {
+  BREACHED: "BREACH",
+  DUE_SOON: "DUE SOON",
+  ON_TRACK: "ON TRACK",
 };
 
 const formatRelative = (dateIso: string) =>
@@ -119,11 +153,28 @@ const isChatSender = (
   sender: TicketMessage["sender"]
 ): sender is TicketSender => sender === "user" || sender === "admin";
 
+const moveTicketToTop = (
+  list: AdminTicketSummary[],
+  ticketId: string,
+  patch: Partial<AdminTicketSummary>
+) => {
+  const index = list.findIndex((ticket) => ticket.id === ticketId);
+  if (index < 0) return { nextList: list, found: false };
+  const current = list[index];
+  const updated: AdminTicketSummary = {
+    ...current,
+    ...patch,
+  };
+  const nextList = [updated, ...list.slice(0, index), ...list.slice(index + 1)];
+  return { nextList, found: true };
+};
+
 interface AdminDashboardProps {
   onBackHome: () => void;
 }
 
 export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
+  const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [adminUser, setAdminUser] = useState<string | null>(null);
@@ -138,9 +189,12 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [status, setStatus] = useState<"ALL" | TicketStatus>("ALL");
-  const [assignedFilter, setAssignedFilter] = useState<"all" | "me" | "unassigned">("all");
+  const [categoryFilter, setCategoryFilter] = useState<"all" | TicketCategory>("all");
+  const [urgencyFilter, setUrgencyFilter] = useState<"all" | "breached" | "due_soon" | "on_track">("all");
   const [query, setQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [showQueueFilters, setShowQueueFilters] = useState(false);
+  const queueSearchRef = useRef<HTMLInputElement | null>(null);
 
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [ticketDetail, setTicketDetail] = useState<AdminTicketDetail | null>(null);
@@ -150,30 +204,42 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
   const [messageInput, setMessageInput] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [assigning, setAssigning] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<TicketStatus>("OPEN");
   const lastDetailMessageAtRef = useRef<string>(new Date(0).toISOString());
   const notifiedEventIdsRef = useRef<Set<string>>(new Set());
   const lastAdminNotifAtRef = useRef<string>(new Date().toISOString());
+  const slaSummary = useMemo(() => {
+    return tickets.reduce(
+      (acc, ticket) => {
+        if (ticket.slaState === "BREACHED") acc.breached += 1;
+        else if (ticket.slaState === "DUE_SOON") acc.dueSoon += 1;
+        else acc.onTrack += 1;
+        return acc;
+      },
+      { breached: 0, dueSoon: 0, onTrack: 0 }
+    );
+  }, [tickets]);
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
     params.set("page", String(page));
     params.set("limit", "10");
     if (status !== "ALL") params.set("status", status);
-    if (assignedFilter !== "all") params.set("assigned", assignedFilter);
+    if (categoryFilter !== "all") params.set("category", categoryFilter);
+    if (urgencyFilter !== "all") params.set("urgency", urgencyFilter);
     if (query) params.set("q", query);
     return params.toString();
-  }, [page, status, assignedFilter, query]);
+  }, [page, status, categoryFilter, urgencyFilter, query]);
 
   const exportQueryString = useMemo(() => {
     const params = new URLSearchParams();
     if (status !== "ALL") params.set("status", status);
-    if (assignedFilter !== "all") params.set("assigned", assignedFilter);
+    if (categoryFilter !== "all") params.set("category", categoryFilter);
+    if (urgencyFilter !== "all") params.set("urgency", urgencyFilter);
     if (query) params.set("q", query);
     return params.toString();
-  }, [status, assignedFilter, query]);
+  }, [status, categoryFilter, urgencyFilter, query]);
 
   const checkSession = useCallback(async () => {
     try {
@@ -197,6 +263,24 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
   useEffect(() => {
     checkSession();
   }, [checkSession]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "/") return;
+      const target = event.target as HTMLElement | null;
+      const isTyping =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        (target && target.getAttribute("contenteditable") === "true");
+      if (isTyping) return;
+      event.preventDefault();
+      setShowQueueFilters(true);
+      queueSearchRef.current?.focus();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const loadTickets = useCallback(async () => {
     if (!authenticated) return;
@@ -349,6 +433,14 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
           toast("Tiket Baru Masuk", {
             description: `${payload.ticketCode} - ${payload.title}`,
           });
+          setPage(1);
+          void loadTickets();
+        }
+
+        if (payload.type === "sla_breach") {
+          toast("SLA Breach", {
+            description: `${payload.ticketCode} - ${payload.message}`,
+          });
           void loadTickets();
         }
 
@@ -356,22 +448,26 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
           toast("Pesan User Baru", {
             description: `${payload.ticketCode}: ${payload.message.slice(0, 80)}`,
           });
+          let found = false;
           setTickets((prev) => {
-            const found = prev.some((ticket) => ticket.id === payload.ticketId);
-            if (!found) return prev;
-            return prev.map((ticket) =>
-              ticket.id === payload.ticketId
-                ? {
-                    ...ticket,
-                    unreadUserMessages:
-                      selectedTicketId === payload.ticketId
-                        ? ticket.unreadUserMessages
-                        : ticket.unreadUserMessages + 1,
-                    updatedAt: payload.createdAt,
-                  }
-                : ticket
-            );
+            const unreadIncrement = (() => {
+              const target = prev.find((ticket) => ticket.id === payload.ticketId);
+              if (!target) return 0;
+              return selectedTicketId === payload.ticketId ? 0 : 1;
+            })();
+            const result = moveTicketToTop(prev, payload.ticketId, {
+              unreadUserMessages:
+                (prev.find((ticket) => ticket.id === payload.ticketId)?.unreadUserMessages || 0) +
+                unreadIncrement,
+              updatedAt: payload.createdAt,
+            });
+            found = result.found;
+            return result.nextList;
           });
+          if (!found) {
+            setPage(1);
+            void loadTickets();
+          }
         }
 
         if (
@@ -382,6 +478,8 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
           const title =
             payload.type === "ticket_created"
               ? `Tiket Baru ${payload.ticketCode}`
+              : payload.type === "sla_breach"
+              ? `SLA Breach ${payload.ticketCode}`
               : `Pesan Baru ${payload.ticketCode}`;
           const body =
             payload.type === "ticket_created"
@@ -461,31 +559,6 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
     }
   };
 
-  const assignTicket = async (mode: "assign" | "unassign") => {
-    if (!ticketDetail) return;
-    setAssigning(true);
-    setDetailError(null);
-
-    try {
-      const res = await fetch(`/api/admin/tickets/${ticketDetail.id}/assign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode }),
-      });
-      if (!res.ok) {
-        setDetailError("Gagal update assignment.");
-        return;
-      }
-
-      await loadTicketDetail(ticketDetail.id);
-      await loadTickets();
-    } catch {
-      setDetailError("Koneksi terputus saat update assignment.");
-    } finally {
-      setAssigning(false);
-    }
-  };
-
   const submitAdminReply = async () => {
     if (!ticketDetail || !messageInput.trim()) return;
     setSendingMessage(true);
@@ -516,6 +589,8 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
           ...prev,
           messages: [...prev.messages, created],
           unreadUserMessages: 0,
+          assignedAdminId: adminUser || prev.assignedAdminId,
+          assignedAt: prev.assignedAt || new Date().toISOString(),
         };
       });
       setTickets((prev) =>
@@ -527,6 +602,8 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
                   ticket.status === "OPEN" ? "IN_PROGRESS" : ticket.status,
                 unreadUserMessages: 0,
                 updatedAt: created.createdAt,
+                assignedAdminId: adminUser || ticket.assignedAdminId,
+                assignedAt: ticket.assignedAt || new Date().toISOString(),
               }
             : ticket
         )
@@ -534,7 +611,14 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
       if (ticketDetail.status === "OPEN") {
         setSelectedStatus("IN_PROGRESS");
         setTicketDetail((prev) =>
-          prev ? { ...prev, status: "IN_PROGRESS" } : prev
+          prev
+            ? {
+                ...prev,
+                status: "IN_PROGRESS",
+                assignedAdminId: adminUser || prev.assignedAdminId,
+                assignedAt: prev.assignedAt || new Date().toISOString(),
+              }
+            : prev
         );
       }
       void markRead(ticketDetail.id);
@@ -626,47 +710,72 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
 
   if (!authenticated) {
     return (
-      <div className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-        <div className="mb-4 flex items-center gap-2 text-slate-800 dark:text-white">
-          <Shield className="size-5 text-blue-500" />
-          <h2 className="text-lg font-bold">Admin Login</h2>
+      <div className="mx-auto max-w-md rounded-3xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-6 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:to-slate-950">
+        <div className="mb-5 flex items-start gap-3">
+          <div className="rounded-xl bg-blue-100 p-2.5 dark:bg-blue-500/20">
+            <Shield className="size-5 text-blue-600 dark:text-blue-300" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Admin Login</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Masuk untuk mengelola tiket, SLA, dan balasan user.
+            </p>
+          </div>
         </div>
-        <div className="space-y-3">
-          <input
-            type="text"
-            value={loginUsername}
-            onChange={(e) => setLoginUsername(e.target.value)}
-            placeholder="Username admin"
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          />
-          <input
-            type="password"
-            value={loginPassword}
-            onChange={(e) => setLoginPassword(e.target.value)}
-            placeholder="Password admin"
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          />
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (loggingIn || !loginUsername || !loginPassword) return;
+            void submitLogin();
+          }}
+        >
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              Username
+            </p>
+            <input
+              type="text"
+              value={loginUsername}
+              onChange={(e) => setLoginUsername(e.target.value)}
+              placeholder="Masukkan username admin"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              Password
+            </p>
+            <input
+              type="password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              placeholder="Masukkan password"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            />
+          </div>
           {authError && (
-            <p className="text-xs text-red-600 dark:text-red-400">{authError}</p>
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+              {authError}
+            </p>
           )}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pt-1">
             <button
               type="button"
               onClick={onBackHome}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-300"
+              className="rounded-lg border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Kembali
             </button>
             <button
-              type="button"
-              onClick={submitLogin}
+              type="submit"
               disabled={loggingIn || !loginUsername || !loginPassword}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
             >
               {loggingIn ? "Masuk..." : "Masuk Admin"}
             </button>
           </div>
-        </div>
+        </form>
       </div>
     );
   }
@@ -700,6 +809,13 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
           </button>
           <button
             type="button"
+            onClick={() => router.push("/admin/users")}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            Kelola Admin
+          </button>
+          <button
+            type="button"
             onClick={logout}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
@@ -715,67 +831,140 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[390px_minmax(0,1fr)] xl:h-[calc(100vh-170px)]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[460px_minmax(0,1fr)] xl:h-[calc(100vh-170px)]">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 flex flex-col min-h-0">
           <div className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200">
             <Shield className="size-4 text-blue-500" />
             Queue Tiket
           </div>
 
-          <div className="space-y-3">
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Cari kode/judul tiket..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                value={status}
-                onChange={(e) => {
-                  setPage(1);
-                  setStatus(e.target.value as "ALL" | TicketStatus);
-                }}
-                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              >
-                <option value="ALL">Semua Status</option>
-                <option value="OPEN">Baru</option>
-                <option value="IN_PROGRESS">Dikerjakan</option>
-                <option value="WAITING">Menunggu</option>
-                <option value="CLOSED">Selesai</option>
-              </select>
-              <select
-                value={assignedFilter}
-                onChange={(e) => {
-                  setPage(1);
-                  setAssignedFilter(e.target.value as "all" | "me" | "unassigned");
-                }}
-                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              >
-                <option value="all">Semua Assignment</option>
-                <option value="me">Assigned ke saya</option>
-                <option value="unassigned">Belum assigned</option>
-              </select>
+          <div className="mb-3 grid grid-cols-3 gap-2">
+            <div className="rounded-lg border border-red-200 bg-red-50 px-2 py-2 text-center dark:border-red-500/30 dark:bg-red-500/10">
+              <p className="text-[10px] font-bold text-red-700 dark:text-red-300">BREACHED</p>
+              <p className="text-base font-extrabold text-red-700 dark:text-red-200">{slaSummary.breached}</p>
             </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-center dark:border-amber-500/30 dark:bg-amber-500/10">
+              <p className="text-[10px] font-bold text-amber-800 dark:text-amber-300">DUE SOON</p>
+              <p className="text-base font-extrabold text-amber-700 dark:text-amber-200">{slaSummary.dueSoon}</p>
+            </div>
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-2 text-center dark:border-emerald-500/30 dark:bg-emerald-500/10">
+              <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">ON TRACK</p>
+              <p className="text-base font-extrabold text-emerald-700 dark:text-emerald-200">{slaSummary.onTrack}</p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-800/40">
             <button
               type="button"
-              onClick={() => {
-                setPage(1);
-                setQuery(searchInput.trim());
-              }}
-              className="w-full rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+              onClick={() => setShowQueueFilters((prev) => !prev)}
+              aria-expanded={showQueueFilters}
+              aria-controls="queue-filter-panel"
+              className="flex w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              Cari
+              <span className="inline-flex items-center gap-2">
+                <SlidersHorizontal className="size-3.5" />
+                Filter Queue
+              </span>
+              {showQueueFilters ? (
+                <ChevronUp className="size-4" />
+              ) : (
+                <ChevronDown className="size-4" />
+              )}
             </button>
+
+            {showQueueFilters && (
+              <div id="queue-filter-panel" className="mt-3 space-y-3">
+                <FieldGroup label="Cari tiket" htmlFor="queue-search">
+                  <input
+                    id="queue-search"
+                    ref={queueSearchRef}
+                    type="text"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    placeholder="Cari kode/judul tiket..."
+                    className="ds-focus-strong w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </FieldGroup>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <FieldGroup label="Status" htmlFor="queue-status">
+                    <select
+                      id="queue-status"
+                      value={status}
+                      onChange={(e) => {
+                        setPage(1);
+                        setStatus(e.target.value as "ALL" | TicketStatus);
+                      }}
+                      className="ds-focus-strong w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    >
+                      <option value="ALL">Semua Status</option>
+                      <option value="OPEN">Baru</option>
+                      <option value="IN_PROGRESS">Dikerjakan</option>
+                      <option value="WAITING">Menunggu</option>
+                      <option value="CLOSED">Selesai</option>
+                    </select>
+                  </FieldGroup>
+                  <FieldGroup label="Kategori" htmlFor="queue-category">
+                    <select
+                      id="queue-category"
+                      value={categoryFilter}
+                      onChange={(e) => {
+                        setPage(1);
+                        setCategoryFilter(e.target.value as "all" | TicketCategory);
+                      }}
+                      className="ds-focus-strong w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    >
+                      <option value="all">Semua Kategori</option>
+                      <option value="HARDWARE">Hardware</option>
+                      <option value="SOFTWARE">Software</option>
+                      <option value="NETWORK">Network</option>
+                      <option value="ACCOUNT">Account</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                  </FieldGroup>
+                  <FieldGroup label="Urgensi SLA" htmlFor="queue-urgency">
+                    <select
+                      id="queue-urgency"
+                      value={urgencyFilter}
+                      onChange={(e) => {
+                        setPage(1);
+                        setUrgencyFilter(
+                          e.target.value as "all" | "breached" | "due_soon" | "on_track"
+                        );
+                      }}
+                      className="ds-focus-strong w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    >
+                      <option value="all">Semua SLA</option>
+                      <option value="breached">SLA Breach</option>
+                      <option value="due_soon">Due Soon</option>
+                      <option value="on_track">On Track</option>
+                    </select>
+                  </FieldGroup>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPage(1);
+                    setQuery(searchInput.trim());
+                    setShowQueueFilters(false);
+                  }}
+                  className="w-full rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  Terapkan Filter
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="mt-4 space-y-3 flex-1 overflow-y-auto min-h-0 pr-1">
             {loadingList && (
-              <p className="text-sm text-slate-500 dark:text-slate-400">Memuat tiket...</p>
+              <NoticeCard role="status" aria-live="polite">
+                Memuat tiket...
+              </NoticeCard>
             )}
             {listError && (
-              <p className="text-sm text-red-600 dark:text-red-400">{listError}</p>
+              <NoticeCard tone="error" role="alert">
+                {listError}
+              </NoticeCard>
             )}
             {!loadingList &&
               !listError &&
@@ -791,15 +980,19 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
                   className={`w-full rounded-xl border p-3 text-left transition ${
                     selectedTicketId === ticket.id
                       ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-500/10"
+                      : ticket.isSlaBreached
+                      ? "border-red-300 bg-red-50/70 dark:border-red-500/50 dark:bg-red-500/10"
+                      : ticket.isSlaDueSoon
+                      ? "border-amber-300 bg-amber-50/70 dark:border-amber-500/50 dark:bg-amber-500/10"
                       : "border-slate-200 bg-slate-50 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs font-bold text-slate-500 dark:text-slate-300">{ticket.code}</span>
                     <span
-                      className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusBadgeClass[ticket.status]}`}
+                      className={`inline-flex rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${slaBadgeClass[ticket.slaState]}`}
                     >
-                      {statusLabel[ticket.status].toUpperCase()}
+                      {slaLabel[ticket.slaState]}
                     </span>
                   </div>
                   <div className="mt-2 flex items-start justify-between gap-2">
@@ -812,12 +1005,19 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
                       {ticket.priority}
                     </span>
                   </div>
-                  <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                    <span>Update: {formatRelative(ticket.updatedAt)}</span>
-                    <span className="inline-flex items-center gap-1 font-semibold">
+                  <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusBadgeClass[ticket.status]}`}
+                    >
+                      {statusLabel[ticket.status].toUpperCase()}
+                    </span>
+                    <span className="inline-flex items-center gap-1 font-semibold truncate max-w-[55%]">
                       <UserCheck className="size-3" />
                       {ticket.assignedAdminId || "Unassigned"}
                     </span>
+                  </div>
+                  <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                    Update: {formatRelative(ticket.updatedAt)}
                   </div>
                   {ticket.unreadUserMessages > 0 && (
                     <span className="mt-2 inline-flex rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600 dark:bg-red-500/10 dark:text-red-300">
@@ -826,6 +1026,11 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
                   )}
                 </button>
               ))}
+            {!loadingList && !listError && tickets.length === 0 && (
+              <EmptyState role="status" aria-live="polite">
+                Tidak ada tiket yang cocok dengan filter saat ini.
+              </EmptyState>
+            )}
           </div>
 
           <div className="mt-4 shrink-0 flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-800">
@@ -855,9 +1060,9 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 flex flex-col min-h-0">
           {!selectedTicketId && (
-            <div className="flex h-96 items-center justify-center text-slate-500 dark:text-slate-400">
-              Pilih tiket untuk mulai memproses.
-            </div>
+            <EmptyState className="flex h-96 items-center justify-center">
+              Pilih tiket di queue untuk mulai memproses percakapan.
+            </EmptyState>
           )}
 
           {selectedTicketId && (
@@ -905,24 +1110,11 @@ export const AdminDashboard = ({ onBackHome }: AdminDashboardProps) => {
                         <span className="rounded-md bg-slate-100 px-2 py-1 dark:bg-slate-800">
                           Resolve SLA: {formatRelative(ticketDetail.resolveDueAt)}
                         </span>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => assignTicket("assign")}
-                          disabled={assigning}
-                          className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300"
+                        <span
+                          className={`rounded-md border px-2 py-1 font-bold ${slaBadgeClass[ticketDetail.slaState]}`}
                         >
-                          Assign to Me
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => assignTicket("unassign")}
-                          disabled={assigning}
-                          className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300"
-                        >
-                          Unassign
-                        </button>
+                          SLA: {slaLabel[ticketDetail.slaState]}
+                        </span>
                       </div>
                       <div className="mt-3 flex items-center gap-2">
                         <select

@@ -78,11 +78,17 @@ export async function PATCH(
   const updateData: {
     status: "OPEN" | "IN_PROGRESS" | "WAITING" | "CLOSED";
     closedAt?: Date | null;
+    feedbackRating?: number | null;
+    feedbackSubmittedAt?: Date | null;
   } = {
     status: status as "OPEN" | "IN_PROGRESS" | "WAITING" | "CLOSED",
   };
 
   updateData.closedAt = status === "CLOSED" ? new Date() : null;
+  if (status !== "CLOSED") {
+    updateData.feedbackRating = null;
+    updateData.feedbackSubmittedAt = null;
+  }
 
   const updated = await prisma.ticket.update({
     where: { id: existing.id },

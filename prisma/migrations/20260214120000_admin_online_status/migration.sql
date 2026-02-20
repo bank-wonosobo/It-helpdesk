@@ -1,0 +1,2 @@
+ALTER TABLE "AdminUser"
+ADD COLUMN "isOnline" BOOLEAN NOT NULL DEFAULT false;

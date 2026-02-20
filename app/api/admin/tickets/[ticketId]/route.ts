@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminSessionFromRequest } from "@/lib/admin-auth";
 import prisma from "@/lib/prisma";
+import { deriveTicketSlaState } from "@/lib/sla";
 
 export async function GET(
   req: Request,
@@ -67,7 +68,13 @@ export async function GET(
     ...ticket,
     reporterName,
     unreadUserMessages,
-    isAssignedToMe: ticket.assignedAdminId === session.username,
+    isAssignedToMe: ticket.assignedAdminId === session.name,
+    ...deriveTicketSlaState({
+      status: ticket.status,
+      firstReplyAt: ticket.firstReplyAt,
+      responseDueAt: ticket.responseDueAt,
+      resolveDueAt: ticket.resolveDueAt,
+    }),
   });
 }
 
@@ -114,6 +121,8 @@ export async function PATCH(
     data: {
       status: status as "OPEN" | "IN_PROGRESS" | "WAITING" | "CLOSED",
       closedAt: status === "CLOSED" ? new Date() : null,
+      assignedAdminId: session.name,
+      assignedAt: new Date(),
     },
   });
 

@@ -15,7 +15,7 @@ const LAST_CHAT_STORAGE_KEY = "hd_last_chat_state";
 export function SiteShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const [hasActiveChat, setHasActiveChat] = useState(false);
 
   useEffect(() => {
@@ -39,11 +39,15 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const ticket = (await res.json()) as { status?: TicketStatus };
+        const ticket = (await res.json()) as {
+          status?: TicketStatus;
+          feedbackRating?: number | null;
+        };
         setHasActiveChat(
           ticket.status === "OPEN" ||
             ticket.status === "IN_PROGRESS" ||
-            ticket.status === "WAITING"
+            ticket.status === "WAITING" ||
+            (ticket.status === "CLOSED" && ticket.feedbackRating == null)
         );
       } catch {
         setHasActiveChat(false);

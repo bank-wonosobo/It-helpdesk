@@ -7,6 +7,7 @@ import { PlusCircle, Search, HelpCircle, ShieldCheck, Clock, Zap } from "lucide-
 interface LandingPageProps {
   onCreateClick: () => void;
   onDashboardClick: () => void;
+  onGuideClick: () => void;
   onResumeChat: () => void;
   hasActiveChat: boolean;
 }
@@ -14,6 +15,7 @@ interface LandingPageProps {
 export const LandingPage = ({
   onCreateClick,
   onDashboardClick,
+  onGuideClick,
   onResumeChat,
   hasActiveChat,
 }: LandingPageProps) => {
@@ -30,18 +32,18 @@ export const LandingPage = ({
 
       {hasActiveChat && (
         <div className="max-w-4xl mx-auto">
-          <div className="rounded-2xl border border-blue-200 bg-blue-50 px-6 py-4 transition dark:border-blue-500/30 dark:bg-blue-500/10">
-            <p className="text-sm font-bold text-blue-700 dark:text-blue-300">
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 px-6 py-5 shadow-sm transition dark:border-blue-500/30 dark:bg-blue-500/10">
+            <p className="text-base font-bold text-blue-700 dark:text-blue-300">
               Anda masih punya chat tiket aktif
             </p>
-            <p className="text-xs text-blue-600/90 dark:text-blue-200/90 mt-1">
+            <p className="mt-1.5 text-sm text-blue-600/90 dark:text-blue-200/90">
               Anda perlu menyelesaikan tiket ini dulu sebelum membuat tiket baru.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={onResumeChat}
-                className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
               >
                 Lanjutkan Chat
               </button>
@@ -50,7 +52,7 @@ export const LandingPage = ({
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
         <div 
           onClick={onCreateClick}
           className="group bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-900 transition-all cursor-pointer relative overflow-hidden"
@@ -82,6 +84,23 @@ export const LandingPage = ({
           <p className="text-slate-500 dark:text-slate-400 leading-relaxed">Pantau perkembangan tiket Anda atau lihat performa layanan kami secara publik.</p>
           <div className="mt-6 flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold group-hover:translate-x-2 transition-transform">
             Lihat Dashboard Publik <span>→</span>
+          </div>
+        </div>
+
+        <div
+          onClick={onGuideClick}
+          className="group bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-violet-200 dark:hover:border-violet-900 transition-all cursor-pointer relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <HelpCircle className="size-24 text-violet-600 dark:text-violet-400" />
+          </div>
+          <div className="w-14 h-14 bg-violet-50 dark:bg-violet-950 text-violet-600 dark:text-violet-400 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-violet-600 dark:group-hover:bg-violet-500 group-hover:text-white transition-colors">
+            <HelpCircle className="size-8" />
+          </div>
+          <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Panduan Pengguna</h3>
+          <p className="text-slate-500 dark:text-slate-400 leading-relaxed">Pelajari alur penggunaan aplikasi untuk user dan admin secara cepat dan jelas.</p>
+          <div className="mt-6 flex items-center gap-2 text-violet-600 dark:text-violet-400 font-semibold group-hover:translate-x-2 transition-transform">
+            Buka Panduan <span>→</span>
           </div>
         </div>
       </div>
@@ -128,6 +147,7 @@ export default function LandingRoutePage() {
     <LandingPage
       onCreateClick={() => router.push("/ticket")}
       onDashboardClick={() => router.push("/dashboard")}
+      onGuideClick={() => router.push("/panduan")}
       onResumeChat={() => router.push("/chat")}
       hasActiveChat={false}
     />

@@ -21,7 +21,7 @@ export async function POST(
   const assignee =
     typeof body === "object" && body !== null && "assignee" in body
       ? (body as { assignee?: unknown }).assignee
-      : session.username;
+      : session.name;
 
   const ticket = await prisma.ticket.findFirst({
     where: {
@@ -41,7 +41,7 @@ export async function POST(
   const targetAssignee =
     !unassign && typeof assignee === "string" && assignee.trim()
       ? assignee.trim()
-      : session.username;
+      : session.name;
 
   const updated = await prisma.ticket.update({
     where: { id: ticket.id },

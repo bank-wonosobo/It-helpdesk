@@ -10,7 +10,8 @@ import {
   CheckCircle2, 
   MapPin, 
   Tag, 
-  AlertTriangle 
+  AlertTriangle,
+  Star
 } from "lucide-react";
 
 interface ChatPageProps {
@@ -57,7 +58,7 @@ type PersistedChatState = {
 const LAST_CHAT_STORAGE_KEY = "hd_last_chat_state";
 const WELCOME_PREFIX = "welcome:";
 const WELCOME_TEXT =
-  "Halo,Tim IT kami akan segera meninjau masalah anda Anda.";
+  "Hai! Laporan kamu sudah masuk ke tim kami, nih. Lagi kita cek dulu, ya! Oh iya, kalau ada detail lain yang ketinggalan, langsung kirim di sini aja ya.";
 
 const parseJsonSafe = async <T,>(res: Response): Promise<T | null> => {
   const raw = await res.text();
@@ -91,6 +92,11 @@ export const ChatPage = ({ onBack, ticketId, ticketData }: ChatPageProps) => {
   const [ticketStatus, setTicketStatus] = useState<
     TicketStatus | null
   >(null);
+  const [feedbackRating, setFeedbackRating] = useState<number | null>(null);
+  const [draftRating, setDraftRating] = useState<number>(0);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [closingTicket, setClosingTicket] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -175,7 +181,10 @@ export const ChatPage = ({ onBack, ticketId, ticketData }: ChatPageProps) => {
         }
 
         if (ticketRes.ok) {
-          const ticket = await parseJsonSafe<{ status?: TicketStatus }>(
+          const ticket = await parseJsonSafe<{
+            status?: TicketStatus;
+            feedbackRating?: number | null;
+          }>(
             ticketRes
           );
           if (!ticket) {
@@ -189,6 +198,13 @@ export const ChatPage = ({ onBack, ticketId, ticketData }: ChatPageProps) => {
             ticket.status === "CLOSED"
           ) {
             setTicketStatus(ticket.status);
+          }
+          if (typeof ticket.feedbackRating === "number") {
+            setFeedbackRating(ticket.feedbackRating);
+            setDraftRating(ticket.feedbackRating);
+          } else {
+            setFeedbackRating(null);
+            setDraftRating(0);
           }
         }
       } catch {
@@ -236,6 +252,47 @@ export const ChatPage = ({ onBack, ticketId, ticketData }: ChatPageProps) => {
     };
   }, [ticketId]);
 
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const ticketRes = await fetch(`/api/tickets/${ticketId}`);
+        if (!ticketRes.ok) return;
+        const ticket = await parseJsonSafe<{
+          status?: TicketStatus;
+          feedbackRating?: number | null;
+        }>(ticketRes);
+        if (!ticket) return;
+        if (
+          ticket.status === "OPEN" ||
+          ticket.status === "IN_PROGRESS" ||
+          ticket.status === "WAITING" ||
+          ticket.status === "CLOSED"
+        ) {
+          setTicketStatus(ticket.status);
+        }
+        if (typeof ticket.feedbackRating === "number") {
+          setFeedbackRating(ticket.feedbackRating);
+          setDraftRating(ticket.feedbackRating);
+        }
+      } catch {
+        // Ignore transient polling errors.
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [ticketId]);
+
+  useEffect(() => {
+    if (!showCloseConfirm) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !closingTicket) {
+        setShowCloseConfirm(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showCloseConfirm, closingTicket]);
+
 
 const handleSendMessage = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -260,6 +317,9 @@ const handleSendMessage = async (e: React.FormEvent) => {
 
   if (!res.ok) {
     alert(saved?.error || "Gagal mengirim pesan");
+    if (res.status === 409) {
+      setTicketStatus("CLOSED");
+    }
     return;
   }
 
@@ -290,7 +350,10 @@ const handleSendMessage = async (e: React.FormEvent) => {
 
   const ticketRes = await fetch(`/api/tickets/${ticketId}`);
   if (ticketRes.ok) {
-    const ticket = await parseJsonSafe<{ status?: TicketStatus }>(ticketRes);
+    const ticket = await parseJsonSafe<{
+      status?: TicketStatus;
+      feedbackRating?: number | null;
+    }>(ticketRes);
     if (!ticket) return;
     if (
       ticket.status === "OPEN" ||
@@ -300,6 +363,74 @@ const handleSendMessage = async (e: React.FormEvent) => {
     ) {
       setTicketStatus(ticket.status);
     }
+    if (typeof ticket.feedbackRating === "number") {
+      setFeedbackRating(ticket.feedbackRating);
+      setDraftRating(ticket.feedbackRating);
+    } else {
+      setFeedbackRating(null);
+      setDraftRating(0);
+    }
+  }
+};
+
+const closeTicketByUser = async () => {
+  if (ticketStatus === "CLOSED") return;
+
+  setClosingTicket(true);
+  try {
+    const res = await fetch(`/api/tickets/${ticketId}/close`, {
+      method: "POST",
+    });
+    const payload = await parseJsonSafe<{
+      status?: TicketStatus;
+      feedbackRating?: number | null;
+      error?: string;
+    }>(res);
+    if (!res.ok) {
+      alert(payload?.error || "Gagal menyelesaikan tiket.");
+      return;
+    }
+    setTicketStatus("CLOSED");
+    if (typeof payload?.feedbackRating === "number") {
+      setFeedbackRating(payload.feedbackRating);
+      setDraftRating(payload.feedbackRating);
+    } else {
+      setFeedbackRating(null);
+      setDraftRating(0);
+    }
+  } catch {
+    alert("Koneksi terputus saat menutup tiket.");
+  } finally {
+    setClosingTicket(false);
+    setShowCloseConfirm(false);
+  }
+};
+
+const submitFeedback = async () => {
+  if (ticketStatus !== "CLOSED" || draftRating < 1 || draftRating > 5) return;
+  setSubmittingFeedback(true);
+  try {
+    const res = await fetch(`/api/tickets/${ticketId}/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rating: draftRating }),
+    });
+    const payload = await parseJsonSafe<{ feedbackRating?: number; error?: string }>(
+      res
+    );
+    if (!res.ok) {
+      alert(payload?.error || "Gagal mengirim feedback.");
+      return;
+    }
+    if (typeof payload?.feedbackRating === "number") {
+      setFeedbackRating(payload.feedbackRating);
+    } else {
+      setFeedbackRating(draftRating);
+    }
+  } catch {
+    alert("Koneksi terputus saat mengirim feedback.");
+  } finally {
+    setSubmittingFeedback(false);
   }
 };
 
@@ -326,7 +457,17 @@ const handleSendMessage = async (e: React.FormEvent) => {
               </p>
             </div>
           </div>
-          <div className="hidden sm:flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            {ticketStatus !== "CLOSED" && (
+              <button
+                type="button"
+                onClick={() => setShowCloseConfirm(true)}
+                disabled={closingTicket}
+                className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+              >
+                {closingTicket ? "Menyelesaikan..." : "Selesaikan Tiket"}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onBack()}
@@ -408,8 +549,50 @@ const handleSendMessage = async (e: React.FormEvent) => {
 
       {/* Input Chat */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-b-3xl p-4 shadow-lg">
+        {ticketStatus === "CLOSED" && (
+          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+              {feedbackRating
+                ? "Terima kasih, feedback Anda sudah kami terima."
+                : "Tiket selesai. Mohon beri penilaian layanan (1-5 bintang)."}
+            </p>
+            <div className="mt-2 flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  disabled={feedbackRating !== null || submittingFeedback}
+                  onClick={() => setDraftRating(value)}
+                  className="rounded-md p-1.5 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-70 dark:hover:bg-amber-500/20"
+                >
+                  <Star
+                    className={`size-5 ${
+                      value <= (feedbackRating ?? draftRating)
+                        ? "fill-amber-500 text-amber-500"
+                        : "text-amber-300 dark:text-amber-500/50"
+                    }`}
+                  />
+                </button>
+              ))}
+              {feedbackRating === null && (
+                <button
+                  type="button"
+                  onClick={submitFeedback}
+                  disabled={draftRating < 1 || submittingFeedback}
+                  className="ml-2 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
+                >
+                  {submittingFeedback ? "Mengirim..." : "Kirim Feedback"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         <form onSubmit={handleSendMessage} className="flex gap-3">
+          <label htmlFor="chat-input" className="sr-only">
+            Tulis pesan chat
+          </label>
           <input 
+            id="chat-input"
             type="text" 
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
@@ -419,6 +602,7 @@ const handleSendMessage = async (e: React.FormEvent) => {
           />
           <button 
             type="submit"
+            aria-label="Kirim pesan"
             disabled={ticketStatus === "CLOSED"}
             className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all active:scale-95 shadow-lg shadow-blue-500/20"
           >
@@ -429,6 +613,42 @@ const handleSendMessage = async (e: React.FormEvent) => {
           Tim IT akan menerima notifikasi pesan Anda secara langsung.
         </p>
       </div>
+
+      {showCloseConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="close-ticket-title"
+          aria-describedby="close-ticket-desc"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+            <h3 id="close-ticket-title" className="text-base font-bold text-slate-900 dark:text-white">
+              Selesaikan Tiket?
+            </h3>
+            <p id="close-ticket-desc" className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+              Setelah tiket diselesaikan, chat akan dikunci dan Anda diminta memberi feedback layanan.
+            </p>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCloseConfirm(false)}
+                disabled={closingTicket}
+                className="rounded-lg border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={closeTicketByUser}
+                disabled={closingTicket}
+                className="rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"              >
+                {closingTicket ? "Menyelesaikan..." : "Ya, Selesaikan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

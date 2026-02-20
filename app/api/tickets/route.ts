@@ -89,9 +89,8 @@ export async function POST(req: Request) {
   const existingReporterKey = parseCookie(req, REPORTER_COOKIE);
   const reporterKey = existingReporterKey || crypto.randomUUID();
 
-  const activeTicket = await prisma.ticket.findFirst({
+  const latestReporterTicket = await prisma.ticket.findFirst({
     where: {
-      status: { in: ["OPEN", "IN_PROGRESS", "WAITING"] },
       messages: {
         some: {
           sender: REPORTER_META_SENDER,
@@ -99,21 +98,31 @@ export async function POST(req: Request) {
         },
       },
     },
+    orderBy: [{ createdAt: "desc" }],
     select: {
       id: true,
       code: true,
       status: true,
+      feedbackRating: true,
     },
   });
 
-  if (activeTicket) {
+  const shouldBlockCreate =
+    latestReporterTicket &&
+    (latestReporterTicket.status === "OPEN" ||
+      latestReporterTicket.status === "IN_PROGRESS" ||
+      latestReporterTicket.status === "WAITING" ||
+      (latestReporterTicket.status === "CLOSED" &&
+        latestReporterTicket.feedbackRating == null));
+
+  if (shouldBlockCreate && latestReporterTicket) {
     const blocked = NextResponse.json(
       {
         error:
-          "Masih ada tiket aktif. Selesaikan tiket sebelumnya sebelum membuat tiket baru.",
-        activeTicketCode: activeTicket.code,
-        activeTicketId: activeTicket.id,
-        activeTicketStatus: activeTicket.status,
+          "Masih ada tiket yang belum ditindaklanjuti. Selesaikan tiket aktif atau beri feedback tiket yang sudah selesai sebelum membuat tiket baru.",
+        activeTicketCode: latestReporterTicket.code,
+        activeTicketId: latestReporterTicket.id,
+        activeTicketStatus: latestReporterTicket.status,
       },
       { status: 409 }
     );

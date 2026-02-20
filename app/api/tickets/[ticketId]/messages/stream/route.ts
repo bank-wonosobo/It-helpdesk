@@ -41,6 +41,7 @@ export async function GET(
       const missed = await prisma.ticketMessage.findMany({
         where: {
           ticketId: ticket.id,
+          sender: { in: ["user", "admin"] },
           createdAt: { gt: lastCursor },
         },
         orderBy: { createdAt: "asc" },
@@ -56,6 +57,7 @@ export async function GET(
       }, 20000);
 
       unsubscribe = subscribeTicketMessages(ticket.id, (message) => {
+        if (message.sender !== "user" && message.sender !== "admin") return;
         if (message.createdAt > lastCursor) {
           lastCursor = message.createdAt;
         }
@@ -68,6 +70,7 @@ export async function GET(
           const updates = await prisma.ticketMessage.findMany({
             where: {
               ticketId: ticket.id,
+              sender: { in: ["user", "admin"] },
               createdAt: { gt: lastCursor },
             },
             orderBy: { createdAt: "asc" },

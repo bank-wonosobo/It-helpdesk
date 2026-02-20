@@ -132,6 +132,8 @@ exports.Prisma.TicketScalarFieldEnum = {
   resolveDueAt: 'resolveDueAt',
   firstReplyAt: 'firstReplyAt',
   closedAt: 'closedAt',
+  feedbackRating: 'feedbackRating',
+  feedbackSubmittedAt: 'feedbackSubmittedAt',
   assignedAdminId: 'assignedAdminId',
   assignedAt: 'assignedAt',
   lastAdminReadAt: 'lastAdminReadAt',
@@ -153,6 +155,17 @@ exports.Prisma.SlaPolicyScalarFieldEnum = {
   responseMinutes: 'responseMinutes',
   resolveMinutes: 'resolveMinutes',
   active: 'active'
+};
+
+exports.Prisma.AdminUserScalarFieldEnum = {
+  id: 'id',
+  username: 'username',
+  password: 'password',
+  name: 'name',
+  active: 'active',
+  isOnline: 'isOnline',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 };
 
 exports.Prisma.SortOrder = {
@@ -193,7 +206,8 @@ exports.TicketStatus = exports.$Enums.TicketStatus = {
 exports.Prisma.ModelName = {
   Ticket: 'Ticket',
   TicketMessage: 'TicketMessage',
-  SlaPolicy: 'SlaPolicy'
+  SlaPolicy: 'SlaPolicy',
+  AdminUser: 'AdminUser'
 };
 
 /**

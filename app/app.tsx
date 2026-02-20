@@ -274,6 +274,7 @@ export default function App() {
                 <LandingPage 
                     onCreateClick={() => router.push("/ticket")}
                     onDashboardClick={() => router.push("/dashboard")}
+                    onGuideClick={() => router.push("/panduan")}
                     onResumeChat={openActiveChat}
                     hasActiveChat={hasActiveChat}
                 />
@@ -414,6 +415,7 @@ export default function App() {
         return <LandingPage 
           onCreateClick={() => router.push("/ticket")}
           onDashboardClick={() => router.push("/dashboard")}
+          onGuideClick={() => router.push("/panduan")}
           onResumeChat={openActiveChat}
           hasActiveChat={hasActiveChat}
         />;

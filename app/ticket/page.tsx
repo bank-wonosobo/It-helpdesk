@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TicketForm } from "@/app/ticket/ticket-form";
+import { NoticeCard } from "@/app/components/system/ux";
 
 type TicketStatus = "OPEN" | "IN_PROGRESS" | "WAITING" | "CLOSED";
 type PersistedChatState = {
@@ -49,13 +50,17 @@ export default function TicketPage() {
           return;
         }
 
-        const ticket = (await res.json()) as { status?: TicketStatus };
-        const isActive =
+        const ticket = (await res.json()) as {
+          status?: TicketStatus;
+          feedbackRating?: number | null;
+        };
+        const isBlocked =
           ticket.status === "OPEN" ||
           ticket.status === "IN_PROGRESS" ||
-          ticket.status === "WAITING";
+          ticket.status === "WAITING" ||
+          (ticket.status === "CLOSED" && ticket.feedbackRating == null);
 
-        if (mounted) setGateState(isActive ? "blocked" : "open");
+        if (mounted) setGateState(isBlocked ? "blocked" : "open");
       } catch {
         if (mounted) setGateState("open");
       }
@@ -69,38 +74,41 @@ export default function TicketPage() {
 
   if (gateState === "checking") {
     return (
-      <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+      <NoticeCard className="mx-auto max-w-2xl text-slate-500 dark:text-slate-300">
         Memeriksa status tiket aktif...
-      </div>
+      </NoticeCard>
     );
   }
 
   if (gateState === "blocked") {
     return (
-      <div className="mx-auto max-w-2xl rounded-2xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-500/30 dark:bg-amber-500/10">
-        <h2 className="text-base font-bold text-amber-800 dark:text-amber-200">
-          Anda masih punya tiket yang belum selesai
+      <NoticeCard
+        tone="warning"
+        className="mx-auto max-w-2xl rounded-2xl p-6 shadow-sm"
+      >
+        <h2 className="text-lg font-bold text-amber-800 dark:text-amber-200">
+          Anda masih punya tiket yang perlu ditindaklanjuti
         </h2>
-        <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
-          Selesaikan atau tunggu tiket aktif ditutup admin dulu sebelum membuat tiket baru.
+        <p className="mt-2.5 text-sm leading-relaxed text-amber-700 dark:text-amber-300">
+          Selesaikan tiket aktif terlebih dulu, atau kirim feedback untuk tiket yang baru ditutup, sebelum membuat tiket baru.
         </p>
         <div className="mt-4 flex gap-2">
           <button
             type="button"
             onClick={() => router.push("/chat")}
-            className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700"
+            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
           >
             Lanjutkan Chat Aktif
           </button>
           <button
             type="button"
             onClick={() => router.push("/")}
-            className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-400/40 dark:bg-amber-900/10 dark:text-amber-200 dark:hover:bg-amber-900/20"
+            className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-400/40 dark:bg-amber-900/10 dark:text-amber-200 dark:hover:bg-amber-900/20"
           >
             Kembali
           </button>
         </div>
-      </div>
+      </NoticeCard>
     );
   }
 
